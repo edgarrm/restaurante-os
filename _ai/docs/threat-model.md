@@ -161,9 +161,17 @@ protección depende **enteramente** de que `TenantScope` esté activo: si
 `Table` usa `BelongsToTenant` y tenancy está inicializada, pedir la mesa 42 de
 otro restaurante devuelve 404 en vez de sus datos.
 
-Es correcto por diseño, pero **ningún spec lo prueba**. Es la clase de
-protección que se rompe silenciosamente si alguien olvida el trait en un
-modelo nuevo, y nadie se entera hasta que un cliente ve datos de otro.
+Es correcto por diseño, pero hasta `gestion-mesas.spec.md` (#1) **ningún spec
+lo probaba**. Es la clase de protección que se rompe silenciosamente si
+alguien olvida el trait en un modelo nuevo, y nadie se entera hasta que un
+cliente ve datos de otro.
+
+`gestion-mesas.spec.md` (#1) es el primer spec implementado que incluye este
+test (`tests/Feature/GestionMesasTest.php`, caso "F-05"): admin del tenant A
+intenta editar/eliminar una mesa del tenant B → 404. Sigue siendo
+**Preventivo**, no Resuelto: la mitigación es una disciplina por spec, no un
+cambio de una sola vez — cada spec nuevo con rutas parametrizadas debe seguir
+incluyendo su propio test.
 
 **Mitigación:** cada spec con rutas parametrizadas debe incluir un test que
 pida explícitamente un recurso de otro tenant y espere 404.
@@ -172,18 +180,27 @@ pida explícitamente un recurso de otro tenant y espere 404.
 
 ## F-06 — MEDIO: No existe spec del middleware de autorización por rol
 
-**Estado:** 🟡 Abierto
+**Estado:** 🟢 Resuelto (2026-08-11) · **Verificado**
+
+Resuelto implementando `_ai/specs/gestion-mesas.spec.md` (#1):
+`App\Http\Middleware\EnsureUserHasRole` (alias `role` en `bootstrap/app.php`)
+protege grupos de rutas completos en `routes/tenant.php`
+(`->middleware('role:admin')`), y `TablePolicy` autoriza la acción específica
+sobre el modelo desde el controller vía `Gate::authorize()`. Decisión y
+opciones consideradas documentadas en `_ai/adrs/ADR-007-autorizacion-por-rol-en-rutas.md`.
+Reutilizable tal cual por cualquier spec futuro con restricción por rol —
+solo agrega el middleware a su grupo de rutas. Verificado con los tests de
+rol en `tests/Feature/GestionMesasTest.php` (`role=mesero`/`role=cocina` →
+403 en `/mesas/gestion`) y la suite completa
+(`php artisan test --compact`, 57 passed / 4 skipped).
 
 Los 9 specs afirman cosas como "`role=cocina` recibe 403", pero **ningún spec
-define el middleware que lo implementa**. Es el mismo tipo de hueco que ya
+definía el middleware que lo implementa**. Es el mismo tipo de hueco que ya
 apareció dos veces en este proyecto (US-6.3 gestión de mesas, y
 onboarding-tenant): un prerequisito que todos asumen y nadie especifica.
 
 Sin él, cada feature implementaría su propio chequeo de rol a mano —
 inconsistente y fácil de omitir en una ruta nueva.
-
-**Mitigación:** escribir el spec del middleware de roles antes de implementar
-la primera feature con restricción por rol.
 
 ---
 
@@ -263,7 +280,7 @@ quede en un solo inventario junto al resto de vectores.
 | F-03 | 🟠 Alto | Pagos sin atribución de usuario | Sí (cambio de esquema) |
 | F-04 | 🟡 Medio | Mass assignment de `role`/`tenant_id` | No (preventivo) |
 | F-05 | 🟡 Medio | IDOR entre tenants sin cobertura de tests | No (preventivo) |
-| F-06 | 🟡 Medio | Sin spec del middleware de roles | Sí, para features con rol |
+| F-06 | 🟡 Medio → 🟢 Resuelto | Sin spec del middleware de roles | Sí, para features con rol |
 | F-07 | 🟡 Medio | Tablet compartida sin bloqueo | No (decisión de producto) |
 | F-08 | 🟢 Bajo | Endurecimiento de despliegue | No (previo a producción) |
 | F-09 | 🟢 Bajo | Enumeración de cuentas entre tenants | No |

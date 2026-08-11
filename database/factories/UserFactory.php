@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Collection;
@@ -45,6 +46,42 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * Asigna role=admin. `role` no es fillable (F-04,
+     * _ai/docs/threat-model.md), así que se fuerza tras crear en vez de vía
+     * el array de `definition()`.
+     */
+    public function admin(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $user->role = Role::Admin;
+            $user->save();
+        });
+    }
+
+    /**
+     * Asigna role=mesero explícitamente (ya es el default de la columna,
+     * pero deja el estado del test autodocumentado).
+     */
+    public function mesero(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $user->role = Role::Mesero;
+            $user->save();
+        });
+    }
+
+    /**
+     * Asigna role=cocina.
+     */
+    public function cocina(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $user->role = Role::Cocina;
+            $user->save();
+        });
     }
 
     /**

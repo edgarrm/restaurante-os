@@ -1,7 +1,7 @@
 # Feature: Gestión de Mesas
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[ ] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Story: US-6.3 "Como admin, quiero crear y editar las mesas del restaurante
@@ -53,7 +53,7 @@ toma de pedidos.
 - [x] ¿Validación de inputs? `name` requerido no vacío; `capacity` entero ≥ 1.
 - [x] ¿Rate limiting? No aplica.
 - [x] ¿Datos sensibles en logs? Ninguno.
-- [ ] **F-05 — IDOR entre tenants**: editar o eliminar una mesa de otro
+- [x] **F-05 — IDOR entre tenants**: editar o eliminar una mesa de otro
       restaurante debe devolver 404. Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
@@ -65,28 +65,40 @@ toma de pedidos.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `CreateTableAction`: crea una mesa con `status=libre` por defecto
-- [ ] `UpdateTableAction`: actualiza nombre/capacidad sin afectar `status`
-- [ ] `DeleteTableAction`: lanza excepción de dominio si la mesa tiene una orden
+- [x] `CreateTableAction`: crea una mesa con `status=libre` por defecto
+- [x] `UpdateTableAction`: actualiza nombre/capacidad sin afectar `status`
+- [x] `DeleteTableAction`: lanza excepción de dominio si la mesa tiene una orden
       `abierta` o `enviada_cocina`
-- [ ] `CreateTableAction`: capacidad ≤ 0 lanza error de validación
+- [x] `CreateTableAction`: capacidad ≤ 0 lanza error de validación
 
 ### Integration Tests
-- [ ] `POST /mesas/gestion` con datos válidos → 200, mesa creada con `status=libre`
-- [ ] `PATCH /mesas/gestion/{table}` actualiza nombre/capacidad → 200
-- [ ] `DELETE /mesas/gestion/{table}` con orden activa → 422
-- [ ] Usuario con `role=mesero` o `role=cocina` accede a `/mesas/gestion` → 403
-- [ ] **F-05**: admin del restaurante A edita/elimina una mesa del restaurante
+- [x] `POST /mesas/gestion` con datos válidos → mesa creada con `status=libre`
+      (redirect 302 a `tables.index`, patrón PRG — ver nota abajo)
+- [x] `PATCH /mesas/gestion/{table}` actualiza nombre/capacidad
+- [x] `DELETE /mesas/gestion/{table}` con orden activa → 422
+- [x] Usuario con `role=mesero` o `role=cocina` accede a `/mesas/gestion` → 403
+- [x] **F-05**: admin del restaurante A edita/elimina una mesa del restaurante
       B → 404, y la mesa del otro tenant queda intacta
+
+> Nota de implementación: el "200" original de este documento asumía una
+> respuesta directa; el patrón ya establecido en este repo (ver
+> `ProfileController`) es POST/PATCH/DELETE → redirect 302 (303 para
+> PATCH/DELETE vía el adaptador de Inertia) al índice, no una respuesta 200
+> directa. Los tests verifican `assertRedirect()` + el estado del modelo en
+> BD, consistente con `tests/Feature/Settings/ProfileUpdateTest.php`.
 
 ### E2E Tests
 - [ ] Happy path completo: admin crea una mesa → la mesa aparece en el mapa de
-      mesas con estado libre
+      mesas con estado libre — **pendiente**: requiere la pantalla Vue de
+      `/mesas/gestion`, fuera de alcance de esta sesión (backend only, ver
+      PASO 1 del prompt de implementación). El backend (Actions, Policy,
+      middleware, rutas) ya está cubierto por Unit + Integration tests.
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente
-- [ ] Sin errores en consola / logs
-- [ ] Sin lógica de negocio en el controller — vive en Actions (ver ADR-004)
+- [x] Sin errores en consola / logs
+- [x] Sin lógica de negocio en el controller — vive en Actions (ver ADR-004)
+- [ ] Pantalla Vue de `/mesas/gestion` (E2E) — pendiente, ver nota arriba

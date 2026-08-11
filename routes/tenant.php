@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -44,4 +45,18 @@ Route::middleware([
     // autenticado de un tenant y por lo tanto necesitan el mismo contexto de
     // tenancy que /login (F-01, _ai/docs/threat-model.md).
     require __DIR__.'/settings.php';
+
+    // Gestión de Mesas (_ai/specs/gestion-mesas.spec.md, #1). `role:admin`
+    // resuelve F-06 (_ai/docs/threat-model.md) para esta pantalla completa;
+    // TablePolicy (ver TableController) autoriza cada acción sobre el
+    // modelo.
+    Route::middleware(['auth', 'role:admin'])
+        ->prefix('mesas/gestion')
+        ->name('tables.')
+        ->group(function () {
+            Route::get('/', [TableController::class, 'index'])->name('index');
+            Route::post('/', [TableController::class, 'store'])->name('store');
+            Route::patch('/{table}', [TableController::class, 'update'])->name('update');
+            Route::delete('/{table}', [TableController::class, 'destroy'])->name('destroy');
+        });
 });
