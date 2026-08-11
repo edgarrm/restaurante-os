@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -39,6 +41,24 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
+        // _ai/specs/gestion-staff.spec.md (#3), Edge Cases: una cuenta
+        // desactivada (`is_active=false`, ver DeactivateStaffAccountAction)
+        // no debe poder iniciar sesión. El pipeline por defecto de Fortify
+        // (AttemptToAuthenticate -> Auth::attempt) no lo contempla, así que
+        // se reemplaza la resolución de credenciales completa vía el punto
+        // de extensión oficial del paquete. `User::where('email', ...)`
+        // sigue acotado al tenant actual porque las rutas de login ya
+        // inicializan tenancy (F-01, _ai/docs/threat-model.md).
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = User::where('email', $request->email)->first();
+
+            if ($user && $user->is_active && Hash::check($request->password, $user->password)) {
+                return $user;
+            }
+
+            return null;
+        });
     }
 
     /**

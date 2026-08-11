@@ -41,6 +41,7 @@ no hay ninguna.
 | email | string | required, unique |
 | password | string | required |
 | role | enum('admin','mesero','cocina') | required, default 'mesero' — ver ADR-003 |
+| is_active | boolean | required, default true — desactivar sin eliminar cuentas con historial de `Order.opened_by` (ver `gestion-staff.spec.md` #3 y `decision-log.md`); bloquea el login vía `Fortify::authenticateUsing` |
 
 ### Table (Mesa)
 | Campo | Tipo | Constraints |
@@ -176,6 +177,7 @@ erDiagram
         string name
         string email
         enum role
+        boolean is_active
     }
     TABLE {
         bigint id PK

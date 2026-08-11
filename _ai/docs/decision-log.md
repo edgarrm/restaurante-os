@@ -99,12 +99,41 @@ del dominio (Actions, controller, rutas).
 suite completa (`php artisan test --compact`, 72 passed / 4 skipped).
 
 ### 2026-08-10 — Passkeys / WebAuthn (Fortify)
-**Estado:** 🟡 Abierta
+**Estado:** 🟢 Resuelta — 2026-08-11, al implementar `gestion-staff.spec.md` (#3)
 **Contexto:** `laravel/fortify` instala `laravel/passkeys` como dependencia
 directa — está en el proyecto sin que nadie lo haya pedido. Podría reducir la
 fricción de onboarding de staff (el diferenciador central del producto) con
 login sin contraseña, o podría ser una feature sin usuario real que la pida.
-**Bloquea:** `_ai/specs/gestion-staff.spec.md` no lo contempla todavía —
-decidir antes de implementar esa feature.
+**Decisión:** **No ahora.** `gestion-staff.spec.md` (#3) se implementó
+password-only — sin urgencia real del cliente ancla que lo pida todavía, y
+el costo de agregar un segundo método de login (registro de passkey por
+usuario, UI de gestión, flujo de fallback) no se justifica sin esa señal.
+**No descartado** — sigue siendo la misma opción documentada en ADR-003,
+sección "Pendiente — Passkeys": revisitar si el cliente ancla o un piloto
+pide explícitamente reducir la fricción de login de staff.
 **Ver:** `_ai/adrs/ADR-003-autenticacion-y-roles.md`, sección "Pendiente —
-Passkeys"
+Passkeys"; `_ai/specs/gestion-staff.spec.md`, sección "Decisiones tomadas
+durante la implementación (PASO 0)"
+
+### 2026-08-11 — Campo de desactivación de cuentas (`users.is_active`)
+**Estado:** 🟢 Resuelta — implementada en `gestion-staff.spec.md` (#3),
+2026-08-11
+**Contexto:** el spec de Gestión de Staff pide que eliminar una cuenta con
+historial de órdenes (`Order.opened_by`) no sea una eliminación dura, sino
+"desactivar la cuenta (deshabilitar login)". `_ai/docs/data-model.md` no
+tenía ningún campo para esto — verificado con `php artisan db:table users`.
+**Opciones evaluadas:** (a) migración `is_active` boolean; (b) reutilizar
+`email_verified_at = null` como señal de "desactivado"; (c) `SoftDeletes`.
+**Decisión:** (a). La opción (b) se descartó tras verificar que no
+funcionaría de verdad: `config/fortify.php` no tiene
+`Features::emailVerification()` habilitado y `User` no implementa
+`MustVerifyEmail`, así que ese campo no interviene en el login en absoluto
+en este proyecto — habría sido una desactivación cosmética. `is_active` se
+agregó como columna boolean (default `true`, no fillable — mismo patrón
+que `available` en `MenuItem`), y el bloqueo real de login se implementó
+reemplazando `Fortify::authenticateUsing()` en `FortifyServiceProvider`
+para rechazar usuarios con `is_active=false`.
+**Verificado con:** `tests/Unit/Actions/Staff/DeactivateStaffAccountActionTest.php`,
+el test "una cuenta desactivada no puede iniciar sesión" de
+`tests/Feature/GestionStaffTest.php`, y la suite completa
+(`php artisan test --compact`, 93 passed / 4 skipped).

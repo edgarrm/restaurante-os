@@ -85,6 +85,19 @@ class UserFactory extends Factory
     }
 
     /**
+     * Marca la cuenta como desactivada (login deshabilitado, ver
+     * _ai/specs/gestion-staff.spec.md). `is_active` no es fillable
+     * (F-04), se fuerza tras crear igual que los demás estados de role.
+     */
+    public function inactive(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $user->is_active = false;
+            $user->save();
+        });
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static

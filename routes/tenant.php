@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -73,5 +74,20 @@ Route::middleware([
             Route::post('/', [MenuItemController::class, 'store'])->name('store');
             Route::patch('/{menuItem}', [MenuItemController::class, 'update'])->name('update');
             Route::patch('/{menuItem}/disponibilidad', [MenuItemController::class, 'toggleAvailability'])->name('toggle-availability');
+        });
+
+    // Gestión de Staff (_ai/specs/gestion-staff.spec.md, #3). Mismo patrón
+    // que Gestión de Mesas/Menú: `role:admin` resuelve F-06 para esta
+    // pantalla completa; UserPolicy (ver StaffController) autoriza cada
+    // acción sobre la cuenta específica y bloquea actuar sobre cuentas
+    // admin (fuera de alcance de este flujo).
+    Route::middleware(['auth', 'role:admin'])
+        ->prefix('staff')
+        ->name('staff.')
+        ->group(function () {
+            Route::get('/', [StaffController::class, 'index'])->name('index');
+            Route::post('/', [StaffController::class, 'store'])->name('store');
+            Route::patch('/{user}', [StaffController::class, 'update'])->name('update');
+            Route::patch('/{user}/desactivar', [StaffController::class, 'deactivate'])->name('deactivate');
         });
 });

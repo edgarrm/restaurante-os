@@ -1,7 +1,7 @@
 # Feature: Gestión de Staff
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Story: US-6.2 "Como admin, quiero crear cuentas de staff con un rol
@@ -83,23 +83,34 @@ ve lo que necesita, no hay nada más que aprender.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `CreateStaffAccountAction`: crea una cuenta con `role` en (`mesero`,
+- [x] `CreateStaffAccountAction`: crea una cuenta con `role` en (`mesero`,
       `cocina`)
-- [ ] `CreateStaffAccountAction`: intentar `role=admin` lanza excepción de
-      dominio
-- [ ] `CreateStaffAccountAction`: email duplicado lanza excepción de validación
-- [ ] **F-04 — mass assignment**: enviar `role=admin` o un `tenant_id` de otro
+- [x] `CreateStaffAccountAction`: intentar `role=admin` lanza excepción de
+      dominio (`App\Exceptions\Staff\InvalidStaffRoleException`)
+- [x] `CreateStaffAccountAction`: email duplicado lanza excepción de validación
+- [x] **F-04 — mass assignment**: enviar `role=admin` o un `tenant_id` de otro
       restaurante dentro del payload NO se refleja en el usuario creado (el
       valor del request se ignora, gana el asignado por la Action)
-- [ ] `DeactivateStaffAccountAction`: desactiva sin eliminar el registro (FK de
+- [x] `DeactivateStaffAccountAction`: desactiva sin eliminar el registro (FK de
       `Order.opened_by` se mantiene íntegra)
+- [x] `UpdateStaffRoleAction`: edita el `role` de una cuenta existente
+      (Happy Path #5); intentar `role=admin` lanza la misma excepción de
+      dominio
 
 ### Integration Tests
-- [ ] `POST /staff` con datos válidos y `role=mesero` → 200, cuenta creada
-- [ ] `POST /staff` con `role=admin` → 422 (o 403 si se trata como intento no
-      autorizado)
-- [ ] `POST /staff` con email duplicado → 422
-- [ ] Usuario con `role=mesero` o `role=cocina` accede a `/staff` → 403
+- [x] `POST /staff` con datos válidos y `role=mesero` → redirect, cuenta creada
+- [x] `POST /staff` con `role=admin` → 422
+- [x] `POST /staff` con email duplicado → 422
+- [x] Usuario con `role=mesero` o `role=cocina` accede a `/staff` → 403
+- [x] `PATCH /staff/{user}` cambia el `role`; con `role=admin` → 422
+- [x] `PATCH /staff/{user}/desactivar` desactiva sin eliminar
+- [x] Una cuenta desactivada (`is_active=false`) no puede iniciar sesión
+      (`Fortify::authenticateUsing`, ver decisión de PASO 0a más abajo)
+- [x] F-04 (integración): `tenant_id` inyectado en el payload de
+      `POST /staff` se ignora — la cuenta se crea bajo el tenant del admin
+      autenticado
+- [x] F-05: `PATCH /staff/{user}` y `PATCH /staff/{user}/desactivar` sobre
+      una cuenta de otro restaurante → 404
 
 ### E2E Tests
 - [ ] Happy path: admin crea una cuenta `role=mesero` → esa cuenta inicia sesión
@@ -107,10 +118,44 @@ ve lo que necesita, no hay nada más que aprender.
       (no `/cocina`, no `/staff`, no `/menu`)
 - [ ] Cuenta `role=cocina` inicia sesión y ve únicamente `/cocina` (no el resto)
 
+> Los E2E no se implementan en este spec — no hay pantalla Vue de `/staff`
+> todavía (backend only, mismo criterio que specs #1 y #2). El middleware
+> `role:` (ADR-007) ya cubre a nivel de ruta que un rol solo acceda a lo
+> suyo; falta la pantalla real para un E2E de navegación.
+
+## Decisiones tomadas durante la implementación (PASO 0)
+
+**PASO 0a — Campo de desactivación.** La tabla `users` no tenía ningún
+campo para "desactivar sin eliminar". Se evaluaron tres opciones:
+1. Migración `is_active` (boolean, default `true`).
+2. Reutilizar `email_verified_at = null` — **descartada**: verificado que
+   Fortify en este proyecto no tiene `Features::emailVerification()`
+   habilitado ni `User implements MustVerifyEmail`
+   ([config/fortify.php:162](../../config/fortify.php), comentario en
+   [User.php:5](../../app/Models/User.php)), así que ese campo no bloquea
+   el login — habría sido una desactivación cosmética, no real.
+3. `SoftDeletes` — no elegida, se prefirió un campo explícito de negocio
+   (`is_active`) en vez de sobrecargar la semántica de "eliminado" del
+   trait para un caso que no es una eliminación.
+
+**Decisión final:** migración `add_is_active_to_users_table` (boolean,
+default `true`, no fillable — mismo patrón que `available` en `MenuItem`).
+El bloqueo real de login se implementó reemplazando la resolución de
+credenciales de Fortify vía `Fortify::authenticateUsing()` en
+`FortifyServiceProvider`, que ahora rechaza a cualquier usuario con
+`is_active=false` — verificado con el test de integración "una cuenta
+desactivada no puede iniciar sesión".
+
+**PASO 0b — Passkeys/WebAuthn.** Resuelto como **no ahora** — ver la
+entrada actualizada en `decision-log.md`. Este spec solo implementa login
+por password.
+
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de este spec pasando (Pest) — 21/21, ver
+      `tests/Unit/Actions/Staff/*` y `tests/Feature/GestionStaffTest.php`
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente
 - [ ] Sin errores en consola / logs
-- [ ] Contraseñas ausentes de cualquier log de aplicación (verificado)
+- [x] Contraseñas ausentes de cualquier log de aplicación (verificado —
+      sin logging custom agregado; `password` sigue `#[Hidden]` en `User`)

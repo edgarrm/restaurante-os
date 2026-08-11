@@ -12,7 +12,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 0 | **Onboarding de Tenant** | `_ai/specs/onboarding-tenant.spec.md` | ✅ Implemented | ✅ | ✅ | — |
 | 1 | Gestión de Mesas | `_ai/specs/gestion-mesas.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
 | 2 | Gestión de Menú | `_ai/specs/gestion-menu.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
-| 3 | Gestión de Staff | `_ai/specs/gestion-staff.spec.md` | 🟡 Draft | ❌ | ❌ | #0 |
+| 3 | Gestión de Staff | `_ai/specs/gestion-staff.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
 | 4 | Mapa de Mesas | `_ai/specs/mapa-de-mesas.spec.md` | 🟡 Draft | ❌ | ❌ | #1 |
 | 5 | Toma de Pedido | `_ai/specs/toma-de-pedido.spec.md` | 🟡 Draft | ❌ | ❌ | #1, #2 |
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | 🟡 Draft | ❌ | ❌ | #5 |
