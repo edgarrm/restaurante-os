@@ -1,0 +1,97 @@
+name: supply-chain
+
+# Catches three distinct failure modes:
+#   1. A dependency tarball whose registry signature does not verify (tampering).
+#   2. A known advisory against something already in the lockfile.
+#   3. Lockfile drift — an install that resolves versions nobody committed.
+#
+# The schedule matters as much as the push trigger: advisories are published
+# against versions you already depend on, so a repo with no commits still
+# needs to be re-checked.
+#
+# Note: this workflow deliberately interpolates no `github.event` data into any
+# run: step, so there is no workflow-injection surface.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      # `npm ci` installs the lockfile exactly and fails on any drift between
+      # package.json and package-lock.json. --ignore-scripts is redundant with
+      # .npmrc but stated explicitly so the guarantee survives an .npmrc edit.
+      - name: Install npm dependencies from lockfile
+        run: npm ci --ignore-scripts
+
+      - name: Install Composer dependencies from lockfile
+        run: composer install --no-interaction --no-progress --no-scripts
+
+      # Verifies every installed package against the registry's signing key,
+      # and reports provenance attestation coverage.
+      - name: Verify npm registry signatures and attestations
+        run: npm audit signatures
+
+      - name: Audit npm dependencies for advisories
+        run: npm audit --audit-level=high
+
+      - name: Audit Composer dependencies for advisories
+        run: composer audit --abandoned=report
+
+      # An install must never rewrite a lockfile in CI. If it did, the tree
+      # that was tested is not the tree that was reviewed.
+      - name: Assert lockfiles were not modified by install
+        run: git diff --exit-code -- package-lock.json composer.lock
+
+      # Socket.dev behavioral scan (install scripts, obfuscation, network/fs
+      # access, license, maintainer risk) across both npm and Composer
+      # manifests — catches what npm audit/composer audit cannot, since those
+      # only flag disclosed CVEs. Disabled until SOCKET_SECURITY_API_TOKEN
+      # exists as a repo secret.
+      #
+      # Setup (one-time, do locally — never paste the token into a workflow file):
+      #   1. socket login   (needs its own org token; do not reuse a token
+      #      minted for local/interactive use — see .ai/rules/general.md)
+      #   2. Grant exactly these API token scopes: full-scans:create,
+      #      full-scans:list, security-policy:read. Nothing else — package
+      #      score/fix/optimize burn 100+ quota units per call and are unrelated.
+      #   3. gh secret set SOCKET_SECURITY_API_TOKEN
+      #   4. Uncomment the two steps below.
+      #
+      # v1.1.151/1.1.152 currently throw `Cannot find module 'form-data'`
+      # (undeclared dependency in their package.json) — pinned to 1.1.144
+      # until that's fixed upstream. Bump deliberately, not via ^ranges.
+      # - name: Install Socket CLI
+      #   run: npm install -g socket@1.1.144 --ignore-scripts
+      #
+      # - name: Socket supply-chain scan
+      #   env:
+      #     SOCKET_SECURITY_API_TOKEN: ${{ secrets.SOCKET_SECURITY_API_TOKEN }}
+      #   run: socket ci
