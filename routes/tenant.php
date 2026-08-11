@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\TableMapController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -60,6 +61,20 @@ Route::middleware([
             Route::post('/', [TableController::class, 'store'])->name('store');
             Route::patch('/{table}', [TableController::class, 'update'])->name('update');
             Route::delete('/{table}', [TableController::class, 'destroy'])->name('destroy');
+        });
+
+    // Mapa de Mesas (_ai/specs/mapa-de-mesas.spec.md, #4). Distinto de
+    // Gestión de Mesas: solo lectura, mesero+admin, sin Policy (el spec
+    // dice explícitamente "Ninguna" regla de autorización propia) —
+    // `role:admin,mesero` resuelve el acceso a esta pantalla completa.
+    // Name group `mesas.` (no `tables.`) para no colisionar con
+    // `tables.index` de arriba; path `/mesas` (sin `/gestion`) tampoco
+    // colisiona con el prefix `mesas/gestion`.
+    Route::middleware(['auth', 'role:admin,mesero'])
+        ->prefix('mesas')
+        ->name('mesas.')
+        ->group(function () {
+            Route::get('/', [TableMapController::class, 'index'])->name('index');
         });
 
     // Gestión de Menú (_ai/specs/gestion-menu.spec.md, #2). Mismo patrón que

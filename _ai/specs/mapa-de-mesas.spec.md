@@ -1,7 +1,7 @@
 # Feature: Mapa de Mesas
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[ ] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Story: US-1.1 "Como mesero, quiero ver el mapa de mesas y su estado, para
@@ -75,21 +75,36 @@ siguiente ciclo silenciosamente (ver Performance Requirements).
       modelados por `gestion-mesas` y `toma-de-pedido`
 
 ### Integration Tests
-- [ ] `GET /mesas` devuelve todas las mesas con su `status` actual
-- [ ] `GET /mesas` con cero mesas devuelve lista vacía (no error)
-- [ ] Usuario con `role=cocina` accede a `/mesas` → 403
-- [ ] **F-05**: con mesas existentes en dos restaurantes, `GET /mesas` como
+- [x] `GET /mesas` devuelve todas las mesas con su `status` actual
+- [x] `GET /mesas` con cero mesas devuelve lista vacía (no error)
+- [x] Usuario con `role=cocina` accede a `/mesas` → 403
+- [x] **F-05**: con mesas existentes en dos restaurantes, `GET /mesas` como
       usuario del restaurante A devuelve exclusivamente las mesas de A
 
 ### E2E Tests
 - [ ] Happy path: admin crea una mesa → mesero la ve en `/mesas` con estado
-      `libre` → mesero la toca → llega a `/mesas/{id}/pedido`
-- [ ] Una mesa marcada `por_cobrar` navega a `/mesas/{id}/cobro` al tocarla
+      `libre` → mesero la toca → llega a `/mesas/{id}/pedido` — **pendiente**:
+      requiere la pantalla Vue de `/mesas` (incluyendo el `poll()` de 3-5s),
+      fuera de alcance de esta sesión (backend only, mismo criterio que
+      #1/#2/#3). El backend (controller, ruta, middleware) ya está cubierto
+      por Integration tests.
+- [ ] Una mesa marcada `por_cobrar` navega a `/mesas/{id}/cobro` al tocarla —
+      mismo motivo, pendiente de la pantalla Vue.
+
+> Nota de implementación: se creó `TableMapController` (nuevo, `GET /mesas`)
+> en vez de reutilizar `TableController` — son responsabilidades distintas:
+> `TableController` es el CRUD exclusivo de admin en `/mesas/gestion`
+> (con `TablePolicy`), mientras que este es solo-lectura para mesero+admin
+> y no tiene Policy (el spec no define reglas de autorización propias). El
+> name group de rutas es `mesas.` (no `tables.`) para no colisionar con
+> `tables.index`.
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en tablet real
-- [ ] Sin errores en consola / logs
-- [ ] Poll dentro de 500ms p95
+- [x] Sin errores en consola / logs
+- [ ] Poll dentro de 500ms p95 — pendiente de medir junto con la pantalla Vue
+- [ ] Pantalla Vue de `/mesas` (E2E, incluye `poll()`) — pendiente, ver nota
+      arriba
