@@ -5,7 +5,10 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
+// F-01/F-02 (_ai/docs/threat-model.md): estas rutas ahora requieren tenancy
+// inicializada.
 beforeEach(function () {
+    $this->tenant = actingInTenant();
     $this->skipUnlessFortifyHas(Features::resetPasswords());
 });
 
@@ -18,7 +21,7 @@ test('reset password link screen can be rendered', function () {
 test('reset password link can be requested', function () {
     Notification::fake();
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
@@ -28,7 +31,7 @@ test('reset password link can be requested', function () {
 test('reset password screen can be rendered', function () {
     Notification::fake();
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
@@ -44,7 +47,7 @@ test('reset password screen can be rendered', function () {
 test('password can be reset with valid token', function () {
     Notification::fake();
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
@@ -65,7 +68,7 @@ test('password can be reset with valid token', function () {
 });
 
 test('password cannot be reset with invalid token', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $response = $this->post(route('password.update'), [
         'token' => 'invalid-token',

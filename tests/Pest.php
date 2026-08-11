@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Stancl\Tenancy\Database\Models\Domain;
 use Tests\TestCase;
 
 /*
@@ -16,7 +20,7 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -47,4 +51,28 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Crea un Tenant de prueba con su Domain asociado y fuerza el root URL que
+ * usan route()/url() a ese subdominio, para que tanto las peticiones HTTP
+ * del test como las redirecciones internas de la app aterricen en el mismo
+ * host. Ver F-01/F-02 en _ai/docs/threat-model.md — desde que las rutas de
+ * auth y de settings requieren tenancy inicializada, todo test que dependa
+ * de un User persistido necesita un tenant real detrás.
+ */
+function actingInTenant(?string $domain = null): Tenant
+{
+    $domain ??= Str::lower(Str::random(12)).'.test';
+
+    $tenant = Tenant::create(['name' => 'Tenant de prueba']);
+
+    Domain::create([
+        'tenant_id' => $tenant->getTenantKey(),
+        'domain' => $domain,
+    ]);
+
+    URL::forceRootUrl('http://'.$domain);
+
+    return $tenant;
 }

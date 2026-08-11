@@ -22,18 +22,48 @@
 ## Entradas
 
 ### 2026-08-10 — Cómo hacer las rutas de auth tenant-aware (F-01)
-**Estado:** 🔴 Abierta — **bloqueante**
+**Estado:** 🟢 Resuelta — implementada en `onboarding-tenant.spec.md` (#0),
+2026-08-11
 **Contexto:** las rutas de Fortify (`/login`, `/logout`, `/forgot-password`,
 `/settings/*`) no tienen middleware de tenancy (verificado con `route:list`).
 Cuando `users.tenant_id` exista, esto permite que un usuario del restaurante B
 se autentique en el subdominio del restaurante A. Ver F-01 en
 `_ai/docs/threat-model.md`.
-**Opciones:** (a) mover las rutas de Fortify a `routes/tenant.php` con
-`InitializeTenancyByDomain`; (b) configurar `config/fortify.php` →
+**Opciones evaluadas:** (a) mover las rutas de Fortify a `routes/tenant.php`
+con `InitializeTenancyByDomain`; (b) configurar `config/fortify.php` →
 `'middleware'` para incluir el middleware de identificación; (c) un guard de
 autenticación explícitamente tenant-aware.
-**Bloquea:** `onboarding-tenant.spec.md` (#0) y, por transitividad, todo lo
-demás. Decidir antes de escribir código de dominio.
+**Decisión:** combinación de (a) y (b), porque las rutas afectadas vienen de
+dos fuentes distintas que ninguna opción pura cubre sola:
+- Las rutas que sí registra el paquete Fortify (`/login`, `/logout`,
+  `/forgot-password`, `/reset-password`, `/verify-email`,
+  `/confirm-password`, 2FA) se resolvieron con **(b)**: `config('fortify.middleware')`
+  es el punto de extensión oficial del paquete
+  (`FortifyServiceProvider::configureRoutes()` envuelve sus rutas en
+  `Route::group(['middleware' => config('fortify.middleware', ['web'])], ...)`)
+  — no requiere tocar vendor ni desregistrar rutas.
+- `/settings/*` **no es de Fortify** — vive en nuestro propio
+  `routes/settings.php`, cargado antes desde `routes/web.php` (central). Se
+  resolvió con el equivalente de **(a)**: se movió el `require` de
+  `settings.php` al grupo de middleware de `routes/tenant.php`.
+- Ambos grupos comparten el mismo stack: `web, InitializeTenancyByDomain,
+  PreventAccessFromCentralDomains, ScopeSessions` (este último cierra F-02 en
+  el mismo cambio).
+**Bug de plomería descubierto al implementar:** el `Tenant` base de
+`stancl/tenancy` no incluye el trait `HasDomains`, pero su propio
+`DomainTenantResolver::resolveWithoutCache()` hace `Tenant::whereHas('domains', ...)`
+— sin la relación, `InitializeTenancyByDomain` revienta con
+`BadMethodCallException` en cuanto intenta identificar un tenant por su
+`Domain`. Se creó `app/Models/Tenant.php` extendiendo el `Tenant` del paquete
+con `HasDomains`, y `config('tenancy.tenant_model')` ahora apunta ahí.
+**Efecto colateral:** todos los tests de `tests/Feature/Auth/*` y
+`tests/Feature/Settings/*` (preexistentes del starter kit) necesitaron un
+Tenant + Domain de fixture — ver el helper `actingInTenant()` en
+`tests/Pest.php`.
+**Verificado con:** `tests/Unit/Actions/Tenants/OnboardTenantActionTest.php`,
+`tests/Feature/OnboardingTenantTest.php` (incluye los tests explícitos de
+F-01/F-02) y la suite completa (`php artisan test --compact`, 37 passed / 4
+skipped).
 
 ### 2026-08-10 — Bloqueo de tablet desatendida (F-07)
 **Estado:** 🟡 Abierta

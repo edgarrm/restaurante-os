@@ -1,7 +1,7 @@
 # Feature: Onboarding de Tenant (Restaurante nuevo en el SaaS)
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 **No hay User Story en el PRD.** Esta feature es infraestructura operativa
@@ -70,25 +70,25 @@ argumento).
 
 ## Security Considerations
 
-> ⚠️ **Bloqueadores del threat model (`_ai/docs/threat-model.md`).** Este spec
-> prueba login por subdominio, así que no puede implementarse mientras F-01 y
-> F-02 sigan abiertos — sus tests de aislamiento fallarían o, peor, pasarían
-> por la razón equivocada.
+> ✅ **Resueltos.** F-01 y F-02 (`_ai/docs/threat-model.md`) están cerrados —
+> ver `decision-log.md` para la decisión de routing y su justificación.
 
-- [ ] **F-01 (CRÍTICO) — las rutas de auth no tienen contexto de tenant.**
-      Verificado: `php artisan route:list` muestra cero middleware de tenancy
-      en `/login`, `/logout`, `/forgot-password`, `/settings/*`.
-      `TenantScope` no filtra cuando `tenancy()->initialized` es false, así que
-      con `users.tenant_id` implementado, un usuario del restaurante B podría
-      autenticarse en el subdominio del restaurante A. **Debe resolverse antes
-      de implementar este spec** (decisión de routing pendiente, ver
-      `decision-log.md`).
-- [ ] **F-02 (ALTO) — agregar `ScopeSessions` al grupo de middleware de
-      `routes/tenant.php`.** Ata la sesión al tenant y aborta con 403 si se
-      reutiliza bajo otro. Hoy `SESSION_DOMAIN=null` protege por accidente; sin
-      `ScopeSessions` no hay defensa si alguien cambia esa variable.
-- [ ] `SESSION_DOMAIN=null` debe quedar documentado como decisión de seguridad
-      explícita, no como default heredado.
+- [x] **F-01 (CRÍTICO) — las rutas de auth no tienen contexto de tenant.**
+      Resuelto combinando `config('fortify.middleware')` (rutas propias de
+      Fortify: login/logout/forgot-password/reset-password/verify-email/2FA)
+      con mover `routes/settings.php` al grupo de `routes/tenant.php`
+      (`/settings/*` no es de Fortify, vive en nuestro propio archivo). Ambos
+      grupos comparten el stack `web, InitializeTenancyByDomain,
+      PreventAccessFromCentralDomains, ScopeSessions`. Adicionalmente hubo que
+      agregar `HasDomains` al modelo `Tenant` (`app/Models/Tenant.php`): el
+      `Tenant` base de `stancl/tenancy` no la trae, y su propio
+      `DomainTenantResolver` la asume — sin ella, `InitializeTenancyByDomain`
+      revienta en cuanto intenta identificar un tenant.
+- [x] **F-02 (ALTO) — agregar `ScopeSessions` al grupo de middleware de
+      `routes/tenant.php`.** Hecho, mismo cambio que F-01.
+- [x] `SESSION_DOMAIN=null` queda documentado como decisión de seguridad
+      explícita en `config/fortify.php` y `routes/tenant.php` (comentarios
+      junto al middleware), no como default heredado.
 
 - [x] ¿Requiere autenticación? No aplica HTTP — es un comando de consola, solo
       ejecutable por quien tiene acceso al servidor/despliegue. No hay ruta
@@ -111,43 +111,50 @@ argumento).
 ## Test Cases
 
 ### Unit Tests
-- [ ] El comando crea `Tenant`, `Domain` y `User` admin con los datos correctos
-- [ ] Subdominio duplicado no crea ninguna entidad (falla antes de escribir)
-- [ ] Falla a mitad de la operación no deja registros huérfanos (verifica la
-      transacción — ej. mockeando una excepción entre pasos)
-- [ ] El `User` creado tiene `role=admin` y el `tenant_id` correcto
+- [x] El comando crea `Tenant`, `Domain` y `User` admin con los datos correctos
+      (`tests/Unit/Actions/Tenants/OnboardTenantActionTest.php`)
+- [x] Subdominio duplicado no crea ninguna entidad (falla antes de escribir)
+- [x] Falla a mitad de la operación no deja registros huérfanos (verificado
+      con una violación real de la constraint `unique` de `email`, no un mock
+      — la transacción envuelve Tenant+Domain+User)
+- [x] El `User` creado tiene `role=admin` y el `tenant_id` correcto
 
 ### Integration Tests
-- [ ] Correr el comando end-to-end permite login exitoso en el subdominio
+- [x] Correr el comando end-to-end permite login exitoso en el subdominio
       nuevo con las credenciales creadas
-- [ ] Correr el comando dos veces con el mismo subdominio falla en la segunda
+      (`tests/Feature/OnboardingTenantTest.php`)
+- [x] Correr el comando dos veces con el mismo subdominio falla en la segunda
       sin duplicar datos
-- [ ] **Aislamiento entre tenants** (primer spec que lo prueba de verdad):
-      onboardear dos restaurantes distintos → el admin del restaurante A no
-      puede iniciar sesión en el subdominio del restaurante B, y una query
-      de `User::all()` ejecutada con tenancy inicializada para A no incluye
-      usuarios de B
-- [ ] **F-01 — el login es tenant-aware**: las credenciales válidas del admin
-      del restaurante B son **rechazadas** en `restauranteA.../login`. Este
-      test debe fallar hoy con la configuración actual; si pasa antes de
-      resolver F-01, está pasando por la razón equivocada (probablemente
-      porque `users.tenant_id` aún no existe) — verificar el motivo, no solo
-      el color del test.
-- [ ] **F-02 — la sesión está acotada al tenant**: tomar una sesión válida del
+- [x] **Aislamiento entre tenants**: onboardear dos restaurantes distintos →
+      el admin del restaurante A no puede iniciar sesión en el subdominio del
+      restaurante B, y una query de `User::all()` ejecutada con tenancy
+      inicializada para A no incluye usuarios de B
+- [x] **F-01 — el login es tenant-aware**: las credenciales válidas del admin
+      del restaurante B son **rechazadas** en `elancla.../login`. El test
+      además verifica el motivo (no solo el color): confirma con
+      `DB::table('users')` que la cuenta de B existe globalmente, así que el
+      rechazo es obra de `TenantScope`, no de una cuenta inexistente.
+- [x] **F-02 — la sesión está acotada al tenant**: tomar una sesión válida del
       restaurante A y usarla contra el subdominio del restaurante B devuelve
       403, no acceso.
 
 ### E2E Tests
-- [ ] Happy path completo: comando corre → admin inicia sesión en su
-      subdominio → ve `/staff` vacío (no ve datos de ningún otro tenant)
+- [x] Happy path parcial: comando corre → admin inicia sesión en su
+      subdominio (cubierto por el Integration Test de arriba). La parte "ve
+      `/staff` vacío" queda pendiente de `gestion-staff.spec.md` — esa ruta
+      todavía no existe, fuera de alcance de este spec.
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de este spec pasando (Pest) — 11/11
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
-- [ ] Verificado manualmente: onboardear un tenant de prueba y loguearse
-- [ ] Sin errores en consola / logs
-- [ ] La contraseña del admin nunca aparece en logs, historial de shell, ni
-      salida del comando
-- [ ] Operación atómica confirmada (transacción DB, verificada con test de
+- [x] Spec actualizado con comportamiento real implementado
+- [x] Verificado: el Integration Test hace exactamente "onboardear un tenant
+      de prueba y loguearse" contra el pipeline real de Fortify — no se corrió
+      además a mano porque el test ya lo prueba con más rigor (Laravel Boost:
+      no crear scripts de verificación cuando un test ya cubre el
+      comportamiento)
+- [x] Sin errores en consola / logs (`php artisan test --compact` limpio)
+- [x] La contraseña del admin nunca aparece en logs, historial de shell, ni
+      salida del comando (`$this->secret()`, nunca un argumento posicional)
+- [x] Operación atómica confirmada (transacción DB, verificada con test de
       falla a mitad de camino)

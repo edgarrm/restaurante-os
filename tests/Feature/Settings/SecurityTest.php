@@ -5,6 +5,12 @@ use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 
+// F-01/F-02 (_ai/docs/threat-model.md): /settings/* ahora requiere tenancy
+// inicializada.
+beforeEach(function () {
+    $this->tenant = actingInTenant();
+});
+
 test('security page is displayed', function () {
     $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
 
@@ -13,7 +19,7 @@ test('security page is displayed', function () {
         'confirmPassword' => true,
     ]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => time()])
@@ -28,7 +34,7 @@ test('security page is displayed', function () {
 test('security page requires password confirmation when enabled', function () {
     $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     Features::twoFactorAuthentication([
         'confirm' => true,
@@ -46,7 +52,7 @@ test('security page renders without two factor when feature is disabled', functi
 
     config(['fortify.features' => []]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => time()])
@@ -61,7 +67,7 @@ test('security page renders without two factor when feature is disabled', functi
 });
 
 test('password can be updated', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $response = $this
         ->actingAs($user)
@@ -80,7 +86,7 @@ test('password can be updated', function () {
 });
 
 test('correct password must be provided to update password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $response = $this
         ->actingAs($user)

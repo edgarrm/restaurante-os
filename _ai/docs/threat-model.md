@@ -28,7 +28,15 @@ atacante hipotético, es **un cliente legítimo de tu propio producto**.
 
 ## F-01 — CRÍTICO: Bypass de autenticación entre tenants
 
-**Estado:** 🔴 Abierto · **Verificado**
+**Estado:** 🟢 Resuelto (2026-08-11) · **Verificado**
+
+Resuelto en `_ai/specs/onboarding-tenant.spec.md` (#0): `config('fortify.middleware')`
+incluye ahora `InitializeTenancyByDomain` + `PreventAccessFromCentralDomains` +
+`ScopeSessions` para las rutas propias de Fortify, y `routes/settings.php` se
+movió al mismo grupo de middleware en `routes/tenant.php`. Detalle completo y
+justificación en `decision-log.md`. Verificado con
+`tests/Feature/OnboardingTenantTest.php` (tests explícitos de F-01: login
+cross-tenant rechazado, motivo confirmado vía `DB::table('users')`).
 
 Las rutas de autenticación de Fortify (`/login`, `/logout`,
 `/forgot-password`, `/settings/*`) **no tienen ningún middleware de tenancy**.
@@ -75,7 +83,14 @@ ese spec ya prueba login por subdominio.
 
 ## F-02 — ALTO: Sesiones no acotadas por tenant
 
-**Estado:** 🔴 Abierto · **Verificado**
+**Estado:** 🟢 Resuelto (2026-08-11) · **Verificado**
+
+`ScopeSessions` se agregó al grupo de middleware de `routes/tenant.php` y de
+`config('fortify.middleware')` (mismo cambio que F-01). `SESSION_DOMAIN=null`
+queda documentado como decisión explícita en los comentarios de ambos
+archivos. Verificado con el test "F-02" de
+`tests/Feature/OnboardingTenantTest.php` (una sesión válida del tenant A
+reutilizada en el subdominio de B devuelve 403).
 
 `stancl/tenancy` incluye el middleware `ScopeSessions`
 (`vendor/stancl/tenancy/src/Middleware/ScopeSessions.php`), que guarda el
@@ -243,8 +258,8 @@ quede en un solo inventario junto al resto de vectores.
 
 | ID | Severidad | Hallazgo | Bloquea implementación |
 |---|---|---|---|
-| F-01 | 🔴 Crítico | Auth sin contexto de tenant → bypass entre tenants | **Sí** |
-| F-02 | 🟠 Alto | Sesiones no acotadas por tenant | **Sí** |
+| F-01 | 🔴 Crítico → 🟢 Resuelto | Auth sin contexto de tenant → bypass entre tenants | **Sí** |
+| F-02 | 🟠 Alto → 🟢 Resuelto | Sesiones no acotadas por tenant | **Sí** |
 | F-03 | 🟠 Alto | Pagos sin atribución de usuario | Sí (cambio de esquema) |
 | F-04 | 🟡 Medio | Mass assignment de `role`/`tenant_id` | No (preventivo) |
 | F-05 | 🟡 Medio | IDOR entre tenants sin cobertura de tests | No (preventivo) |

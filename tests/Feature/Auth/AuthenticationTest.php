@@ -4,6 +4,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
+// F-01/F-02 (_ai/docs/threat-model.md): /login ahora requiere tenancy
+// inicializada — cada test corre dentro del subdominio de un tenant real.
+beforeEach(function () {
+    $this->tenant = actingInTenant();
+});
+
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
@@ -11,7 +17,7 @@ test('login screen can be rendered', function () {
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
@@ -30,7 +36,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
         'confirmPassword' => true,
     ]);
 
-    $user = User::factory()->withTwoFactor()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->withTwoFactor()->create();
 
     $response = $this->post(route('login'), [
         'email' => $user->email,
@@ -43,7 +49,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $this->post(route('login.store'), [
         'email' => $user->email,
@@ -54,7 +60,7 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('users can logout', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     $response = $this->actingAs($user)->post(route('logout'));
 
@@ -64,7 +70,7 @@ test('users can logout', function () {
 });
 
 test('users are rate limited', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->for($this->tenant, 'tenant')->create();
 
     RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
 

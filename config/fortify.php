@@ -1,6 +1,9 @@
 <?php
 
 use Laravel\Fortify\Features;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
+use Stancl\Tenancy\Middleware\ScopeSessions;
 
 return [
 
@@ -99,9 +102,23 @@ return [
     | that it registers with the application. If necessary, you may change
     | these middleware but typically this provided default is preferred.
     |
+    | F-01 (_ai/docs/threat-model.md): sin InitializeTenancyByDomain, /login
+    | resuelve `User::where('email', ...)` contra TODOS los tenants (el
+    | Global Scope de TenantScope no filtra si tenancy no está inicializada),
+    | permitiendo que un usuario del restaurante B se autentique en el
+    | subdominio del restaurante A. PreventAccessFromCentralDomains bloquea
+    | además que estas rutas se sirvan desde el dominio central. ScopeSessions
+    | (F-02) ata la sesión resultante a ese tenant. Mismo stack que el grupo
+    | de `routes/tenant.php` — decisión registrada en decision-log.md.
+    |
     */
 
-    'middleware' => ['web'],
+    'middleware' => [
+        'web',
+        InitializeTenancyByDomain::class,
+        PreventAccessFromCentralDomains::class,
+        ScopeSessions::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------

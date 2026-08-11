@@ -8,4 +8,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
 });
 
-require __DIR__.'/settings.php';
+// settings.php se registra en routes/tenant.php, no aquí — ver F-01 en
+// _ai/docs/threat-model.md: /settings/* opera sobre el usuario autenticado
+// de un tenant y necesita el mismo contexto de tenancy que /login.
