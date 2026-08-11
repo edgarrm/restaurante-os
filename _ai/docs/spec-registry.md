@@ -14,7 +14,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 2 | Gestión de Menú | `_ai/specs/gestion-menu.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
 | 3 | Gestión de Staff | `_ai/specs/gestion-staff.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
 | 4 | Mapa de Mesas | `_ai/specs/mapa-de-mesas.spec.md` | ✅ Implemented | ✅ | ✅ | #1 |
-| 5 | Toma de Pedido | `_ai/specs/toma-de-pedido.spec.md` | 🟡 Draft | ❌ | ❌ | #1, #2 |
+| 5 | Toma de Pedido | `_ai/specs/toma-de-pedido.spec.md` | ✅ Implemented | ✅ | ✅ | #1, #2 |
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | 🟡 Draft | ❌ | ❌ | #5 |
 | 7 | Cobro | `_ai/specs/cobro.spec.md` | 🟡 Draft | ❌ | ❌ | #5 |
 | 8 | Reservas | `_ai/specs/reservas.spec.md` | 🟡 Draft | ❌ | ❌ | #1 (opcional, `table_id` nullable) |

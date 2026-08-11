@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableMapController;
@@ -104,5 +105,19 @@ Route::middleware([
             Route::post('/', [StaffController::class, 'store'])->name('store');
             Route::patch('/{user}', [StaffController::class, 'update'])->name('update');
             Route::patch('/{user}/desactivar', [StaffController::class, 'deactivate'])->name('deactivate');
+        });
+
+    // Toma de Pedido (_ai/specs/toma-de-pedido.spec.md, #5). Mismo patrón
+    // que Mapa de Mesas: `role:admin,mesero` resuelve F-06 para esta
+    // pantalla completa; sin Policy — el spec dice explícitamente que no
+    // hay reglas de autorización propias más allá del rol (ninguna
+    // asignación mesero↔mesa en el MVP).
+    Route::middleware(['auth', 'role:admin,mesero'])
+        ->prefix('mesas/{table}/pedido')
+        ->name('pedido.')
+        ->group(function () {
+            Route::get('/', [OrderController::class, 'show'])->name('show');
+            Route::post('/items', [OrderController::class, 'addItem'])->name('add-item');
+            Route::post('/enviar', [OrderController::class, 'send'])->name('send');
         });
 });

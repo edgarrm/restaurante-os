@@ -137,3 +137,29 @@ para rechazar usuarios con `is_active=false`.
 el test "una cuenta desactivada no puede iniciar sesión" de
 `tests/Feature/GestionStaffTest.php`, y la suite completa
 (`php artisan test --compact`, 93 passed / 4 skipped).
+
+### 2026-08-11 — Brecha de contrato en `toma-de-pedido.spec.md` (#5): editar/quitar ítems de la cuenta
+**Estado:** 🟢 Resuelta — implementada en `toma-de-pedido.spec.md` (#5), 2026-08-11
+**Contexto:** el spec tiene una inconsistencia entre sus propias secciones.
+Happy Path (paso 7, "el mesero ajusta cantidades con el stepper") y Edge
+Cases ("cantidad ajustada a 0 en el stepper → el renglón se elimina")
+narran un endpoint para editar/decrementar/eliminar un `OrderItem` ya
+agregado a la cuenta. Pero ni `_ai/docs/api-contract.yaml` ni la sección
+Test Cases → Integration Tests del spec definen ese endpoint — los tres
+documentados (GET pedido, POST items con incremento si ya existe, POST
+enviar) solo cubren agregar.
+**Opciones evaluadas:** (a) implementar en esta sesión un endpoint no
+documentado en el contrato (ej. `PATCH`/`DELETE`
+`/mesas/{table}/pedido/items/{orderItem}`) para cerrar la brecha; (b)
+dejarlo fuera de alcance explícitamente, documentado como pendiente, porque
+ningún Integration Test del spec lo exige y el stepper en sí es trabajo de
+la pantalla Vue de una sesión futura.
+**Decisión:** (b). Es consistente con el criterio ya establecido en este
+proyecto de hacer TDD contra los Test Cases del spec, no contra la prosa
+de Happy Path/Edge Cases — construir un endpoint que ningún test pide
+sería anticiparse al contrato, no implementarlo. Documentado como brecha
+pendiente en `toma-de-pedido.spec.md` (sección Integration Tests) para
+cuando se construya la pantalla Vue de `/mesas/{table}/pedido`.
+**Verificado con:** `tests/Unit/Actions/Orders/*`,
+`tests/Feature/TomaDePedidoTest.php`, y la suite completa
+(`php artisan test --compact`, 114 passed / 4 skipped).

@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
- * Modelo mínimo — ver la nota en la migración `create_orders_table`. Solo
- * expone lo que `Table::orders()`/`DeleteTableAction` necesitan hoy;
- * _ai/specs/toma-de-pedido.spec.md (#5) completa el resto del dominio.
+ * Ver _ai/specs/toma-de-pedido.spec.md (#5) para el dominio completo de
+ * Order (antes modelo mínimo, solo para `Table::orders()`/`DeleteTableAction`
+ * — ver _ai/specs/gestion-mesas.spec.md).
  *
  * @property int $id
  * @property string $tenant_id
@@ -50,5 +51,13 @@ class Order extends Model
     public function table(): BelongsTo
     {
         return $this->belongsTo(Table::class);
+    }
+
+    /**
+     * @return HasMany<OrderItem, $this>
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }

@@ -1,7 +1,7 @@
 # Feature: Toma de Pedido
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Stories:
@@ -96,35 +96,56 @@ orden pasa a status `enviada_cocina`.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `AddItemToOrderAction`: agregar un ítem nuevo crea un `OrderItem` con
+- [x] `AddItemToOrderAction`: agregar un ítem nuevo crea un `OrderItem` con
       `unit_price` igual al precio actual del `MenuItem` (snapshot)
-- [ ] `AddItemToOrderAction`: agregar un ítem ya presente incrementa `quantity`
+- [x] `AddItemToOrderAction`: agregar un ítem ya presente incrementa `quantity`
       del renglón existente en vez de duplicarlo
-- [ ] `AddItemToOrderAction`: agregar un ítem con `available=false` lanza
+- [x] `AddItemToOrderAction`: agregar un ítem con `available=false` lanza
       excepción de dominio
-- [ ] `AddItemToOrderAction`: agregar un ítem a una mesa en `por_cobrar` lanza
+- [x] `AddItemToOrderAction`: agregar un ítem a una mesa en `por_cobrar` lanza
       excepción de dominio
-- [ ] `SendOrderToKitchenAction`: una orden con ítems cambia su status a
+- [x] `SendOrderToKitchenAction`: una orden con ítems cambia su status a
       `enviada_cocina`
-- [ ] `SendOrderToKitchenAction`: una orden sin ítems lanza excepción de dominio
-- [ ] Lógica de apertura de orden: mesa `libre` crea una `Order` nueva y marca la
+- [x] `SendOrderToKitchenAction`: una orden sin ítems lanza excepción de dominio
+- [x] Lógica de apertura de orden: mesa `libre` crea una `Order` nueva y marca la
       mesa `ocupada`; mesa `ocupada` reutiliza la `Order` `abierta` existente
+      (`OpenOrReuseOrderForTableAction`)
 
 ### Integration Tests
-- [ ] Mesero visita `/mesas/{mesa_libre}/pedido` → la mesa queda `ocupada` y existe
+- [x] Mesero visita `/mesas/{mesa_libre}/pedido` → la mesa queda `ocupada` y existe
       una orden `abierta` para ella
-- [ ] `POST /mesas/{table}/pedido/items` con un ítem disponible → 200, la orden
-      refleja el ítem con la cantidad correcta
-- [ ] `POST /mesas/{table}/pedido/items` con un ítem no disponible → 422 con el
+- [x] `POST /mesas/{table}/pedido/items` con un ítem disponible → la orden
+      refleja el ítem con la cantidad correcta (redirect 302 a la misma
+      página, patrón PRG — ver nota abajo)
+- [x] `POST /mesas/{table}/pedido/items` con un ítem no disponible → 422 con el
       mensaje exacto del spec
-- [ ] `POST /mesas/{table}/pedido/enviar` con ítems → 200, orden en
-      `enviada_cocina`
-- [ ] `POST /mesas/{table}/pedido/enviar` sin ítems → 422
-- [ ] Usuario con `role=cocina` accede a `/mesas/{table}/pedido` → 403
-- [ ] **F-05**: un mesero del restaurante A pide
+- [x] `POST /mesas/{table}/pedido/enviar` con ítems → orden en `enviada_cocina`
+      (redirect 302, mismo patrón)
+- [x] `POST /mesas/{table}/pedido/enviar` sin ítems → 422
+- [x] Usuario con `role=cocina` accede a `/mesas/{table}/pedido` → 403
+- [x] **F-05**: un mesero del restaurante A pide
       `/mesas/{mesa_del_restaurante_B}/pedido` → 404
-- [ ] **F-05**: agregar un `menu_item_id` que pertenece a otro restaurante →
-      falla, no se agrega a la orden
+- [x] **F-05**: agregar un `menu_item_id` que pertenece a otro restaurante →
+      404, no se agrega a la orden
+
+> Nota de implementación: igual que `gestion-mesas.spec.md` (#1), el "200"
+> original de este documento para `POST .../items` y `POST .../enviar`
+> asumía una respuesta directa; el patrón PRG ya establecido en este repo
+> (redirect 302 a la misma página) es el implementado — consistente además
+> con la propia descripción de `api-contract.yaml` para estos dos
+> endpoints ("redirect Inertia a la misma página"). Los tests verifican
+> `assertRedirect()` + el estado del modelo en BD.
+>
+> **Brecha de alcance decidida en PASO 0 (ver `decision-log.md`,
+> 2026-08-11):** Happy Path y Edge Cases de este documento narran un
+> stepper que ajusta/quita cantidades de un `OrderItem` ya agregado
+> (incluyendo "cantidad ajustada a 0 → el renglón se elimina"), pero ni
+> `api-contract.yaml` ni los Integration Tests de arriba definen un
+> endpoint para editarlo/eliminarlo — solo agregar (con incremento) existe.
+> Se dejó **fuera de alcance de esta sesión**, documentado aquí en vez de
+> construir un endpoint no pedido por ningún test case; es trabajo
+> pendiente para cuando se implemente la pantalla Vue de
+> `/mesas/{table}/pedido`.
 
 ### E2E Tests
 - [ ] Happy path completo desde UI: abrir mesa libre → agregar 2 platillos →
@@ -134,11 +155,17 @@ orden pasa a status `enviada_cocina`.
       orden no queda en estado inconsistente
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en un dispositivo tablet real
-- [ ] Sin errores en consola / logs
-- [ ] Agregar ítem y enviar a cocina dentro de 500ms p95
-- [ ] Sin lógica de negocio en el controller — vive en `AddItemToOrderAction` /
-      `SendOrderToKitchenAction` (ver ADR-004)
+- [x] Sin errores en consola / logs
+- [ ] Agregar ítem y enviar a cocina dentro de 500ms p95 — pendiente de medir
+      junto con la pantalla Vue
+- [x] Sin lógica de negocio en el controller — vive en `AddItemToOrderAction` /
+      `SendOrderToKitchenAction` / `OpenOrReuseOrderForTableAction` (ver
+      ADR-004)
+- [ ] Pantalla Vue de `/mesas/{table}/pedido` (E2E) — pendiente, fuera de
+      alcance de esta sesión (backend only, mismo criterio que #1/#2/#3/#4);
+      incluye el endpoint de editar/quitar `OrderItem` documentado como
+      brecha arriba

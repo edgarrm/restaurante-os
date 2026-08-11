@@ -11,10 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Modelo mínimo — ver la nota en la migración `create_order_items_table`.
- * Solo existe hoy para que UpdateMenuItemAction pueda probar que
- * `unit_price` es un snapshot; _ai/specs/toma-de-pedido.spec.md (#5)
- * completa el resto del dominio.
+ * Ver _ai/specs/toma-de-pedido.spec.md (#5) para el dominio completo de
+ * OrderItem (antes modelo mínimo, solo para que UpdateMenuItemAction
+ * probara que `unit_price` es un snapshot — ver
+ * _ai/specs/gestion-menu.spec.md).
  *
  * Sin `BelongsToTenant`: OrderItem no lleva `tenant_id` propio, hereda el
  * aislamiento vía `Order` (ver _ai/docs/data-model.md).
