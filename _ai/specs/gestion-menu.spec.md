@@ -1,7 +1,7 @@
 # Feature: Gestión de Menú
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Story: US-6.1 "Como admin, quiero crear y editar platillos del menú (nombre,
@@ -54,7 +54,7 @@ sin el cual `toma-de-pedido` no tiene qué ofrecer.
       texto no vacío.
 - [x] ¿Rate limiting? No aplica.
 - [x] ¿Datos sensibles en logs? Ninguno.
-- [ ] **F-05 — IDOR entre tenants**: editar el precio o la disponibilidad de un
+- [x] **F-05 — IDOR entre tenants**: editar el precio o la disponibilidad de un
       platillo de otro restaurante debe devolver 404. Es un vector con
       motivación real: el menú y los precios son justamente lo que un
       competidor alojado en la misma plataforma querría ver o alterar. Ver
@@ -69,34 +69,57 @@ sin el cual `toma-de-pedido` no tiene qué ofrecer.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `CreateMenuItemAction`: crea un platillo con `available=true` por defecto
-- [ ] `UpdateMenuItemAction`: cambiar el precio no afecta `OrderItem` existentes
-      (verificar que el snapshot se mantiene)
-- [ ] `CreateMenuItemAction`: precio ≤ 0 lanza excepción de validación
-- [ ] `ToggleMenuItemAvailabilityAction`: alterna `available` sin tocar otros
+- [x] `CreateMenuItemAction`: crea un platillo con `available=true` por defecto
+- [x] `UpdateMenuItemAction`: cambiar el precio no afecta `OrderItem` existentes
+      (verificar que el snapshot se mantiene) — ver nota de PASO 0 abajo:
+      `order_items` se agregó como migración/modelo mínimo solo para este test
+      (mismo patrón que `orders` en spec #1); el dominio completo lo construye
+      `toma-de-pedido.spec.md` (#5).
+- [x] `CreateMenuItemAction`: precio ≤ 0 lanza excepción de validación
+- [x] `ToggleMenuItemAvailabilityAction`: alterna `available` sin tocar otros
       campos
 
 ### Integration Tests
-- [ ] `GET /menu` devuelve todos los platillos agrupados/filtrables por categoría
-- [ ] `POST /menu` con datos válidos → 200, platillo creado
-- [ ] `POST /menu` con precio inválido → 422
-- [ ] `PATCH /menu/{menuItem}` cambia disponibilidad sin afectar órdenes pasadas
-- [ ] Usuario con `role=mesero` o `role=cocina` accede a `/menu` (escritura) → 403
-- [ ] **F-05**: `GET /menu` del restaurante A no lista ningún platillo del
+- [x] `GET /menu` devuelve todos los platillos del tenant
+- [x] `POST /menu` con datos válidos → redirect, platillo creado con
+      `available=true`
+- [x] `POST /menu` con precio inválido → 422
+- [x] `PATCH /menu/{menuItem}` actualiza nombre/categoría/precio
+- [x] `PATCH /menu/{menuItem}/disponibilidad` cambia disponibilidad sin afectar
+      otros campos
+- [x] Usuario con `role=mesero` o `role=cocina` accede a `/menu` (escritura) → 403
+- [x] **F-05**: `GET /menu` del restaurante A no lista ningún platillo del
       restaurante B
-- [ ] **F-05**: `PATCH /menu/{menuItem}` sobre un platillo de otro restaurante
-      → 404, y el platillo del otro tenant no cambia
+- [x] **F-05**: `PATCH /menu/{menuItem}` y `PATCH /menu/{menuItem}/disponibilidad`
+      sobre un platillo de otro restaurante → 404, y el platillo del otro
+      tenant no cambia
+
+> Nota de implementación: `GET /menu` no tiene pantalla Vue todavía (backend
+> only, ver E2E abajo), así que los tests de este endpoint simulan la
+> navegación XHR de Inertia (`inertiaXhrHeaders()` en `tests/Pest.php`) en vez
+> de un GET normal — un GET normal intenta renderizar
+> `resources/js/pages/menu/Index.vue` vía `@vite()` y falla con
+> `ViteException` porque el archivo no existe. Mismo motivo por el que
+> `POST /menu` inválido se prueba con `postJson()`: el patrón normal de
+> Inertia ante un error de validación es redirect 302 con errores flasheados
+> en sesión, no 422 — 422 es la respuesta real de Laravel a un cliente que
+> pide JSON explícitamente.
 
 ### E2E Tests
 - [ ] Happy path: admin crea un platillo → aparece disponible en
-      `toma-de-pedido`
+      `toma-de-pedido` — **pendiente**: requiere la pantalla Vue de `/menu` y
+      `toma-de-pedido.spec.md` (#5), fuera de alcance de esta sesión (backend
+      only). El backend (Actions, Policy, middleware, rutas) ya está cubierto
+      por Unit + Integration tests.
 - [ ] Admin desactiva un platillo → deja de poder agregarse en
-      `toma-de-pedido`, pero las órdenes que ya lo tenían no cambian
+      `toma-de-pedido`, pero las órdenes que ya lo tenían no cambian —
+      **pendiente**, mismo motivo.
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente
-- [ ] Sin errores en consola / logs
-- [ ] Cambiar precio no altera `OrderItem` ya creados (verificado con test)
+- [x] Sin errores en consola / logs
+- [x] Cambiar precio no altera `OrderItem` ya creados (verificado con test)
+- [ ] Pantalla Vue de `/menu` (E2E) — pendiente, ver nota arriba

@@ -76,3 +76,26 @@ function actingInTenant(?string $domain = null): Tenant
 
     return $tenant;
 }
+
+/**
+ * Headers para simular una navegación XHR de Inertia en un Feature test,
+ * sin depender de que el `.vue` de la página exista compilado en el
+ * manifest de Vite (necesario solo para el primer HTML load — ver
+ * resources/views/app.blade.php, `@vite(..."pages/{$page['component']}.vue")`).
+ * Usado por specs backend-only como _ai/specs/gestion-menu.spec.md.
+ *
+ * Incluye `X-Inertia-Version` calculado igual que
+ * `Inertia\Middleware::version()`: sin ella, Inertia responde 409 (conflicto
+ * de versión de assets) en vez de la respuesta normal.
+ *
+ * @return array<string, string>
+ */
+function inertiaXhrHeaders(): array
+{
+    $manifest = public_path('build/manifest.json');
+
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => file_exists($manifest) ? hash_file('xxh128', $manifest) : '',
+    ];
+}

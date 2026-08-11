@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -58,5 +59,19 @@ Route::middleware([
             Route::post('/', [TableController::class, 'store'])->name('store');
             Route::patch('/{table}', [TableController::class, 'update'])->name('update');
             Route::delete('/{table}', [TableController::class, 'destroy'])->name('destroy');
+        });
+
+    // Gestión de Menú (_ai/specs/gestion-menu.spec.md, #2). Mismo patrón que
+    // Gestión de Mesas: `role:admin` resuelve F-06 para esta pantalla
+    // completa; MenuItemPolicy (ver MenuItemController) autoriza cada acción
+    // sobre el modelo específico.
+    Route::middleware(['auth', 'role:admin'])
+        ->prefix('menu')
+        ->name('menu.')
+        ->group(function () {
+            Route::get('/', [MenuItemController::class, 'index'])->name('index');
+            Route::post('/', [MenuItemController::class, 'store'])->name('store');
+            Route::patch('/{menuItem}', [MenuItemController::class, 'update'])->name('update');
+            Route::patch('/{menuItem}/disponibilidad', [MenuItemController::class, 'toggleAvailability'])->name('toggle-availability');
         });
 });

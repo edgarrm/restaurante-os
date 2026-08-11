@@ -76,6 +76,28 @@ reautenticación solo para acciones sensibles (cobro, anulación).
 **Es decisión del cliente ancla, no técnica** — depende de cómo opera su piso.
 **Ver:** F-07 en `_ai/docs/threat-model.md`, `_ai/specs/cobro.spec.md`.
 
+### 2026-08-11 — `order_items` no existe todavía al implementar `gestion-menu.spec.md` (#2)
+**Estado:** 🟢 Resuelta — implementada en `gestion-menu.spec.md` (#2), 2026-08-11
+**Contexto:** el spec de Gestión de Menú pide un Unit Test para
+`UpdateMenuItemAction` que verifica que `OrderItem.unit_price` es un snapshot
+que no cambia si `menu_items.price` cambia después. La tabla `order_items` es
+de `toma-de-pedido.spec.md` (#5, sin implementar) — mismo tipo de hueco que
+`orders` al implementar `gestion-mesas.spec.md` (#1).
+**Opciones evaluadas:** (a) migración + modelo mínimo de `order_items`, solo
+lo necesario para el test (sin Actions/Controllers/rutas de pedidos); (b)
+recortar ese test case del spec y resolverlo hasta el #5.
+**Decisión:** (a), siguiendo el mismo patrón ya usado para `orders` en #1
+(ver `database/migrations/2026_08_11_212112_create_orders_table.php` y
+`app/Models/Order.php`, que documentan en un comentario qué falta y qué spec
+lo completa). `order_items` **no lleva `tenant_id` propio** — hereda el
+aislamiento vía `Order` (ya documentado así en `_ai/docs/data-model.md`, sin
+cambios de esquema). Columnas: `order_id`, `menu_item_id`, `quantity`,
+`unit_price`, `status` enum. `toma-de-pedido.spec.md` (#5) completa el resto
+del dominio (Actions, controller, rutas).
+**Verificado con:** `tests/Unit/Actions/MenuItems/UpdateMenuItemActionTest.php`
+("cambiar el precio no afecta el snapshot de `OrderItem` existentes") y la
+suite completa (`php artisan test --compact`, 72 passed / 4 skipped).
+
 ### 2026-08-10 — Passkeys / WebAuthn (Fortify)
 **Estado:** 🟡 Abierta
 **Contexto:** `laravel/fortify` instala `laravel/passkeys` como dependencia
