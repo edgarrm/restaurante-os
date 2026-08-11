@@ -21,6 +21,31 @@
 
 ## Entradas
 
+### 2026-08-10 — Cómo hacer las rutas de auth tenant-aware (F-01)
+**Estado:** 🔴 Abierta — **bloqueante**
+**Contexto:** las rutas de Fortify (`/login`, `/logout`, `/forgot-password`,
+`/settings/*`) no tienen middleware de tenancy (verificado con `route:list`).
+Cuando `users.tenant_id` exista, esto permite que un usuario del restaurante B
+se autentique en el subdominio del restaurante A. Ver F-01 en
+`_ai/docs/threat-model.md`.
+**Opciones:** (a) mover las rutas de Fortify a `routes/tenant.php` con
+`InitializeTenancyByDomain`; (b) configurar `config/fortify.php` →
+`'middleware'` para incluir el middleware de identificación; (c) un guard de
+autenticación explícitamente tenant-aware.
+**Bloquea:** `onboarding-tenant.spec.md` (#0) y, por transitividad, todo lo
+demás. Decidir antes de escribir código de dominio.
+
+### 2026-08-10 — Bloqueo de tablet desatendida (F-07)
+**Estado:** 🟡 Abierta
+**Contexto:** las tablets viven en el piso y en cocina, compartidas y a menudo
+desatendidas. `SESSION_LIFETIME=120` sin bloqueo por inactividad: quien tome
+una tablet abierta puede tomar pedidos y **cobrar** como el mesero que la dejó.
+**Tensión:** el diferenciador del producto es "cero fricción" — un bloqueo con
+contraseña lo contradice. Alternativas intermedias: PIN corto por usuario, o
+reautenticación solo para acciones sensibles (cobro, anulación).
+**Es decisión del cliente ancla, no técnica** — depende de cómo opera su piso.
+**Ver:** F-07 en `_ai/docs/threat-model.md`, `_ai/specs/cobro.spec.md`.
+
 ### 2026-08-10 — Passkeys / WebAuthn (Fortify)
 **Estado:** 🟡 Abierta
 **Contexto:** `laravel/fortify` instala `laravel/passkeys` como dependencia

@@ -63,6 +63,15 @@ ve lo que necesita, no hay nada más que aprender.
 - [x] ¿Datos sensibles en logs? **La contraseña nunca debe aparecer en logs** —
       Laravel ya la excluye por defecto de logs de excepción estándar; verificar
       que no se agregue logging custom que la exponga.
+- [ ] **F-04 (MEDIO) — `role` y `tenant_id` NUNCA en `$fillable`.** Hoy
+      `app/Models/User.php` declara
+      `#[Fillable(['name', 'email', 'password'])]`, que es seguro. La forma
+      "obvia" de implementar este spec —agregar `role` a Fillable y hacer
+      `User::create($request->validated())`— abre escalación de privilegios por
+      mass assignment: bastaría inyectar `role=admin` en el request.
+      Asignar `role` explícitamente en la Action, tras validar contra una lista
+      blanca. Rechazar el valor `admin` (ya especificado abajo) es una defensa
+      distinta y complementaria: protege contra el valor, no contra el vector.
 
 ## Performance Requirements
 - Max response time: 500ms (p95).
@@ -79,6 +88,9 @@ ve lo que necesita, no hay nada más que aprender.
 - [ ] `CreateStaffAccountAction`: intentar `role=admin` lanza excepción de
       dominio
 - [ ] `CreateStaffAccountAction`: email duplicado lanza excepción de validación
+- [ ] **F-04 — mass assignment**: enviar `role=admin` o un `tenant_id` de otro
+      restaurante dentro del payload NO se refleja en el usuario creado (el
+      valor del request se ignora, gana el asignado por la Action)
 - [ ] `DeactivateStaffAccountAction`: desactiva sin eliminar el registro (FK de
       `Order.opened_by` se mantiene íntegra)
 

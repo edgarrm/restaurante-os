@@ -57,6 +57,10 @@ siguiente ciclo silenciosamente (ver Performance Requirements).
 - [x] ¿Rate limiting? No aplica al usuario, pero el intervalo de polling debe ser
       razonable (3-5s) para no generar carga innecesaria.
 - [x] ¿Datos sensibles en logs? Ninguno.
+- [ ] **F-05 — aislamiento entre tenants**: `GET /mesas` del restaurante A no
+      debe incluir ninguna mesa del restaurante B. Esta pantalla no tiene ruta
+      parametrizada, pero es la que más revelaría de un vistazo si el scope
+      fallara (todo el piso del competidor). Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95) por cada poll.
@@ -74,6 +78,8 @@ siguiente ciclo silenciosamente (ver Performance Requirements).
 - [ ] `GET /mesas` devuelve todas las mesas con su `status` actual
 - [ ] `GET /mesas` con cero mesas devuelve lista vacía (no error)
 - [ ] Usuario con `role=cocina` accede a `/mesas` → 403
+- [ ] **F-05**: con mesas existentes en dos restaurantes, `GET /mesas` como
+      usuario del restaurante A devuelve exclusivamente las mesas de A
 
 ### E2E Tests
 - [ ] Happy path: admin crea una mesa → mesero la ve en `/mesas` con estado

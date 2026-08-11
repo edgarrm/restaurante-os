@@ -54,6 +54,11 @@ sin el cual `toma-de-pedido` no tiene qué ofrecer.
       texto no vacío.
 - [x] ¿Rate limiting? No aplica.
 - [x] ¿Datos sensibles en logs? Ninguno.
+- [ ] **F-05 — IDOR entre tenants**: editar el precio o la disponibilidad de un
+      platillo de otro restaurante debe devolver 404. Es un vector con
+      motivación real: el menú y los precios son justamente lo que un
+      competidor alojado en la misma plataforma querría ver o alterar. Ver
+      `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95).
@@ -77,6 +82,10 @@ sin el cual `toma-de-pedido` no tiene qué ofrecer.
 - [ ] `POST /menu` con precio inválido → 422
 - [ ] `PATCH /menu/{menuItem}` cambia disponibilidad sin afectar órdenes pasadas
 - [ ] Usuario con `role=mesero` o `role=cocina` accede a `/menu` (escritura) → 403
+- [ ] **F-05**: `GET /menu` del restaurante A no lista ningún platillo del
+      restaurante B
+- [ ] **F-05**: `PATCH /menu/{menuItem}` sobre un platillo de otro restaurante
+      → 404, y el platillo del otro tenant no cambia
 
 ### E2E Tests
 - [ ] Happy path: admin crea un platillo → aparece disponible en

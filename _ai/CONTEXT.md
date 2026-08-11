@@ -54,6 +54,16 @@ implementado aún — ver `_ai/docs/data-model.md` y `_ai/docs/api-contract.yaml
 - Todo Feature test de una feature debe incluir un caso que verifique que un
   usuario del tenant A **no** ve datos del tenant B.
 
+**Seguridad:** hay un threat model en `_ai/docs/threat-model.md` con 10
+hallazgos. Tres son bloqueantes antes de escribir código de dominio (F-01 auth
+sin contexto de tenant, F-02 sesiones sin acotar, F-03 pagos sin atribución).
+Revisarlo antes de implementar cualquier spec.
+
+**Antes de desplegar a producción (F-08):** verificar `APP_DEBUG=false`,
+`APP_ENV=production`, `SESSION_SECURE_COOKIE=true` y `SESSION_DOMAIN=null` —
+los defaults de `.env.example` son de desarrollo y filtrarían stack traces o
+permitirían cookies sobre HTTP.
+
 ## Directory Structure
 ```
 _ai/

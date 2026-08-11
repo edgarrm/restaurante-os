@@ -46,6 +46,12 @@ Prioridad: [Must / Should / Could]
 - [ ] ¿Validación de inputs? [qué se valida]
 - [ ] ¿Rate limiting? [si aplica]
 - [ ] ¿Datos sensibles en logs? [qué NO loggear]
+- [ ] **Aislamiento entre tenants (obligatorio en TODA feature)**: ¿qué pasa si
+      se pide un recurso de otro restaurante por ID? Debe ser 404, no sus
+      datos. ¿Las listas filtran por tenant? Ver `_ai/docs/threat-model.md`.
+- [ ] **Mass assignment**: ¿algún campo sensible (`role`, `tenant_id`,
+      atribución de usuario) podría venir del request? Asignarlo en la Action,
+      nunca desde `$request->validated()` sin lista blanca.
 
 ## Performance Requirements
 - Max response time: [X]ms (p95)
@@ -63,6 +69,9 @@ Prioridad: [Must / Should / Could]
 ### Integration Tests
 - [ ] [Test del flujo completo happy path]
 - [ ] [Test de integración con servicio externo]
+- [ ] **Aislamiento entre tenants (obligatorio)**: un usuario del restaurante A
+      no puede leer ni modificar recursos del restaurante B a través de esta
+      feature
 
 ### E2E Tests
 - [ ] [Happy path completo desde UI]

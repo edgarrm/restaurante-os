@@ -99,8 +99,10 @@ funcionalidad central no aporta nada.
 ### Positive
 - Infraestructura sin cambios respecto a lo ya decidido en ADR-002: una sola base
   PostgreSQL en producción
-- Onboardear un restaurante piloto (KR3) es crear un `Tenant` + `Domain`, sin
-  provisión de infraestructura
+- Onboardear un restaurante piloto (KR3) no requiere provisión de
+  infraestructura (sin bases de datos que crear) — sigue siendo trabajo manual
+  vía comando, no automático: crear `Tenant` + `Domain` + la primera cuenta
+  admin de ese restaurante (ver `_ai/specs/onboarding-tenant.spec.md`)
 
 ### Negative
 - **`_ai/docs/data-model.md` cambia**: cada tabla del dominio necesita

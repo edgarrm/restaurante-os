@@ -78,6 +78,12 @@ orden pasa a status `enviada_cocina`.
 - [x] ¿Rate limiting? No aplica — uso interno, pocos dispositivos por restaurante.
 - [x] ¿Datos sensibles en logs? Ninguno — nombres de platillos, cantidades y
       precios no son datos sensibles.
+- [ ] **F-05 — IDOR entre tenants**: `/mesas/{table}/pedido` resuelve el modelo
+      por ID de la URL. La protección depende enteramente de que `Table` use
+      `BelongsToTenant` y de que tenancy esté inicializada. Pedir una mesa de
+      otro restaurante debe devolver **404**, no sus datos. Lo mismo aplica a
+      `menu_item_id` en el body: agregar un platillo de otro tenant debe
+      fallar. Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95) para agregar ítem y para enviar a cocina — ver
@@ -115,6 +121,10 @@ orden pasa a status `enviada_cocina`.
       `enviada_cocina`
 - [ ] `POST /mesas/{table}/pedido/enviar` sin ítems → 422
 - [ ] Usuario con `role=cocina` accede a `/mesas/{table}/pedido` → 403
+- [ ] **F-05**: un mesero del restaurante A pide
+      `/mesas/{mesa_del_restaurante_B}/pedido` → 404
+- [ ] **F-05**: agregar un `menu_item_id` que pertenece a otro restaurante →
+      falla, no se agrega a la orden
 
 ### E2E Tests
 - [ ] Happy path completo desde UI: abrir mesa libre → agregar 2 platillos →

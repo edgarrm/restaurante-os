@@ -53,6 +53,8 @@ toma de pedidos.
 - [x] ¿Validación de inputs? `name` requerido no vacío; `capacity` entero ≥ 1.
 - [x] ¿Rate limiting? No aplica.
 - [x] ¿Datos sensibles en logs? Ninguno.
+- [ ] **F-05 — IDOR entre tenants**: editar o eliminar una mesa de otro
+      restaurante debe devolver 404. Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95) — no es un flujo de alta frecuencia durante
@@ -74,6 +76,8 @@ toma de pedidos.
 - [ ] `PATCH /mesas/gestion/{table}` actualiza nombre/capacidad → 200
 - [ ] `DELETE /mesas/gestion/{table}` con orden activa → 422
 - [ ] Usuario con `role=mesero` o `role=cocina` accede a `/mesas/gestion` → 403
+- [ ] **F-05**: admin del restaurante A edita/elimina una mesa del restaurante
+      B → 404, y la mesa del otro tenant queda intacta
 
 ### E2E Tests
 - [ ] Happy path completo: admin crea una mesa → la mesa aparece en el mapa de

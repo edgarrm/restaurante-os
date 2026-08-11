@@ -62,6 +62,17 @@ mesa vuelve a `status=libre`.
 - [x] ¿Datos sensibles en logs? **No loggear el monto exacto en logs de
       aplicación de forma que quede fuera de la tabla `payments`** — el registro
       contable vive en la base de datos, no en logs de texto plano.
+- [ ] **F-03 (ALTO) — todo `Payment` debe registrar `collected_by`** con el
+      usuario autenticado que ejecutó el cobro. Es control interno, no
+      metadato: sin él no hay forma de investigar un faltante de caja. El valor
+      se toma **del usuario autenticado en el servidor**, nunca de un campo del
+      request (sería falsificable). Ver `_ai/docs/data-model.md`.
+- [ ] **F-05 — IDOR entre tenants**: cobrar la mesa de otro restaurante debe
+      devolver 404, no sus datos.
+- [ ] **F-07 — riesgo de tablet desatendida**: cobrar es la acción más sensible
+      que un mesero ejecuta. Si se decide algún bloqueo (PIN, reautenticación),
+      esta pantalla es la primera candidata. Decisión pendiente en
+      `decision-log.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95) — cerrar la cuenta es un flujo crítico de
@@ -78,6 +89,10 @@ mesa vuelve a `status=libre`.
 - [ ] `CloseOrderAction`: monto mayor al total → acepta, registra el monto real
 - [ ] `CloseOrderAction`: orden ya `pagada` → no crea un segundo `Payment`
       (idempotente)
+- [ ] **F-03**: el `Payment` creado tiene `collected_by` igual al usuario
+      autenticado
+- [ ] **F-03**: un `collected_by` enviado en el request es ignorado — se usa
+      siempre el usuario autenticado del servidor
 
 ### Integration Tests
 - [ ] `GET /mesas/{table}/cobro` devuelve el detalle de la orden abierta

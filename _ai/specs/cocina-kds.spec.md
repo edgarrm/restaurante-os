@@ -65,6 +65,10 @@ para el mesero.
       de una orden ya cerrada.
 - [x] ¿Rate limiting? No aplica.
 - [x] ¿Datos sensibles en logs? Ninguno.
+- [ ] **F-05 — IDOR entre tenants**: marcar como listo un `orderItem` de otro
+      restaurante debe devolver 404. El KDS es especialmente sensible a esto
+      porque su acción es idempotente y silenciosa — un 200 por error no
+      levantaría sospecha. Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95) al marcar un ítem como listo — acción crítica
@@ -89,6 +93,10 @@ para el mesero.
 - [ ] `PATCH /cocina/items/{orderItem}/listo` sobre un ítem ya `listo` → 200,
       sin efecto adicional (idempotente)
 - [ ] Usuario con `role=mesero` accede a `/cocina` → 403
+- [ ] **F-05**: `PATCH /cocina/items/{orderItem}/listo` sobre un ítem de otro
+      restaurante → 404, y el ítem del otro tenant NO cambia de estado
+- [ ] **F-05**: `GET /cocina` del restaurante A no incluye ningún pedido del
+      restaurante B
 
 ### E2E Tests
 - [ ] Happy path: mesero envía un pedido a cocina (spec `toma-de-pedido`) → el

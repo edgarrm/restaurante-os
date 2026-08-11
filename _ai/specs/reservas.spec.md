@@ -64,6 +64,12 @@ público para que el cliente final reserve directamente.
 - [x] ¿Datos sensibles en logs? `customer_name` y `customer_phone` son datos
       personales del cliente final — **no deben aparecer en logs de aplicación**,
       solo persistir en la tabla `reservations`.
+- [ ] **F-05 — IDOR entre tenants**: este es el spec con más impacto si el
+      aislamiento falla, porque es el único que almacena **datos personales de
+      terceros** (nombre y teléfono de clientes finales, que nunca aceptaron
+      nada con tu plataforma). Una fuga aquí no es solo ventaja competitiva:
+      es exposición de PII. `GET /reservas` del restaurante A no debe incluir
+      reservas de B. Ver `_ai/docs/threat-model.md`.
 
 ## Performance Requirements
 - Max response time: 500ms (p95).
@@ -84,6 +90,11 @@ público para que el cliente final reserve directamente.
 - [ ] `POST /reservas` con datos válidos → 200, reserva creada
 - [ ] `POST /reservas` con fecha pasada → 422
 - [ ] Usuario con `role=cocina` accede a `/reservas` → 403
+- [ ] **F-05**: con reservas en dos restaurantes, `GET /reservas` como usuario
+      del restaurante A no expone ningún `customer_name` ni `customer_phone`
+      del restaurante B
+- [ ] **F-05**: asignar `table_id` de una mesa de otro restaurante a una
+      reserva → falla
 
 ### E2E Tests
 - [ ] Happy path: staff crea una reserva sin mesa asignada → aparece en el

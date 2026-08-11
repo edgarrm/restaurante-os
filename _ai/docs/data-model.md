@@ -89,9 +89,17 @@ caro de sobre-construir ahora.
 |---|---|---|
 | id | bigint | PK |
 | order_id | bigint | FK → orders, required |
+| collected_by | bigint | FK → users, required — **quién cobró** (ver F-03 del threat model) |
 | amount | decimal(10,2) | required |
 | method | string | required — ej. "efectivo", "tarjeta" |
 | paid_at | timestamp | required |
+
+**`collected_by` es un control interno, no un metadato.** Sin él es imposible
+responder "¿qué mesero tomó este pago en efectivo?", que es el control más
+básico contra el vector de fraude más común en restaurantes. Agregado tras el
+threat model del 2026-08-10 (F-03), donde se detectó que `InventoryMovement`
+sí registraba `created_by` y `Payment` no — inconsistencia que delataba un
+olvido, no una decisión.
 
 **Nota de alcance:** se modela como 1:N (una orden puede tener varios pagos) desde
 el día uno, aunque split-bill (US-3.2) sea `Could` y no se construya la UI todavía.
@@ -131,6 +139,7 @@ más costoso que declarar la relación correcta ahora sin construir la UI que la
 ## Relaciones
 
 - `User` 1:N `Order` (vía `opened_by`)
+- `User` 1:N `Payment` (vía `collected_by`)
 - `Table` 1:N `Order`
 - `Table` 1:N `Reservation` (FK nullable — reserva puede no tener mesa asignada aún)
 - `Order` N:M `MenuItem` vía `OrderItem` (pivot con `quantity`, `unit_price`, `status`)
@@ -200,6 +209,7 @@ erDiagram
     PAYMENT {
         bigint id PK
         bigint order_id FK
+        bigint collected_by FK
         decimal amount
         string method
         timestamp paid_at
