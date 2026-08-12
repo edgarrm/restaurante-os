@@ -54,3 +54,16 @@ export interface Payment {
     method: PaymentMethod;
     paid_at: string;
 }
+
+export type ReservationStatus = 'confirmada' | 'sentada' | 'cancelada';
+
+export interface Reservation {
+    id: number;
+    table_id: number | null;
+    customer_name: string;
+    customer_phone: string;
+    party_size: number;
+    reserved_at: string;
+    status: ReservationStatus;
+    table?: Table;
+}

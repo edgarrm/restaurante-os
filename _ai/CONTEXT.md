@@ -130,12 +130,14 @@ tests Pest) en los 9. F-01 a F-06 del threat model están 🟢 Resueltos;
 quedan abiertos F-07 (bloqueo de tablet, decisión de producto pendiente del
 cliente ancla) y F-08/F-09/F-10 (bajos, no bloqueantes).
 
-**Pantallas Vue construidas (8 de 10 Must del inventario,
-`_ai/design/screen-inventory.md`):** Login, Mapa de Mesas, Toma de Pedido,
-Cocina (KDS), Cobro/Cierre de Cuenta, Gestión de Menú, Gestión de Mesas,
-Gestión de Staff — el loop operativo mesero→cocina→cobro es navegable
-end-to-end en browser real (`decision-log.md`, entradas del 2026-08-12 con
-verificación manual). Gestión de Menú tiene verificación de render
+**Pantallas Vue construidas (9 de 9 pantallas Must del inventario,
+`_ai/design/screen-inventory.md` — #7 fusionada en #6, ver nota de
+Reservas más abajo):** Login, Mapa de Mesas, Toma de Pedido, Cocina (KDS),
+Cobro/Cierre de Cuenta, Gestión de Menú, Gestión de Mesas, Gestión de
+Staff, Reservas — el loop operativo completo (mesero→cocina→cobro, más
+altas de mesas/staff/reservas) es navegable end-to-end en browser real
+(`decision-log.md`, entradas del 2026-08-12 con verificación manual).
+Gestión de Menú tiene verificación de render
 confirmada por captura, pero el click-through de crear/editar/alternar
 disponibilidad con eventos de mouse reales quedó incompleto — la extensión
 de Chrome se desconectó a media verificación (ver `decision-log.md`,
@@ -145,7 +147,8 @@ permitido/bloqueado). Gestión de Staff: lint + types + build pasan; tests
 Pest 12/12; verificación visual en browser pendiente (ver
 `decision-log.md`, entrada del 2026-08-12 "Pantalla Vue de Gestión de
 Staff"). Login: verificado por lint/types/tests y un login real vía
-HTTP/curl (sin browser real disponible en esa sesión).
+HTTP/curl (sin browser real disponible en esa sesión). Reservas tiene
+click-through completo verificado en browser real.
 
 **2026-08-12 — Login (#1):** `resources/js/pages/auth/Login.vue` traducido
 a español y su layout (`AuthLayout.vue`) cambiado de
@@ -155,8 +158,20 @@ visualmente a Register/ForgotPassword/etc. (comparten el mismo layout)
 pero no se tradujo ni se tocó su lógica, fuera de alcance de este spec.
 Ver `decision-log.md` para el detalle de alcance y verificación.
 
-**Pantallas Vue Must todavía pendientes** (columna Stack de
-`screen-inventory.md` sigue ⬜): Calendario de reservas, Nueva reserva.
+**Reservas (#6/#7 del inventario, mergeada a `main`):** #6 "Calendario de
+reservas" y #7 "Nueva reserva" eran filas separadas en el inventario
+original, pero el backend
+real (`ReservationController`: solo `index`+`store`, ambos renderizan
+`reservas/Index`) es una sola pantalla — el formulario de nueva reserva
+vive en un diálogo, mismo patrón que "Nuevo platillo"/Gestión de Menú.
+Click-through completo verificado en browser real (crear con/sin mesa
+asignada, fecha pasada rechazada con banner inline, no modal crudo, light
++ dark mode) — ver `decision-log.md`, entrada del 2026-08-12 "PASO 0 de la
+pantalla Vue de Reservas".
+
+**Pantallas Vue Must:** las 9 pantallas del inventario (`screen-inventory.md`,
+#7 fusionada en #6) están construidas — ver detalle de verificación por
+pantalla arriba y en `decision-log.md`.
 
 **Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
 app (consola: "Hydration completed but contains mismatches" / error
@@ -169,7 +184,7 @@ que aplica la clase `dark` antes de montar Vue.
 Brecha documentada pendiente en `decision-log.md`: transiciones de
 `Reservation` a `sentada`/`cancelada` (#8, sin endpoint ni control en UI).
 
-Próximo paso a decidir con el usuario: completar las pantallas Vue Must que
-faltan, arrancar Should Have (Inventario, sin spec todavía) o Could Have
-(split bill, dashboard del día) — ver `_ai/docs/spec-registry.md`, sección
-"Pendiente de spec".
+Próximo paso a decidir con el usuario: con las 9 pantallas Must
+construidas, arrancar Should Have (Inventario, sin spec todavía) o Could
+Have (split bill, dashboard del día) — ver `_ai/docs/spec-registry.md`,
+sección "Pendiente de spec".

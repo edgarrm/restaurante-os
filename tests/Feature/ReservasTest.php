@@ -73,7 +73,7 @@ test('POST /reservas con fecha pasada devuelve 422', function () {
     ]);
 
     $response->assertStatus(422);
-    expect($response->json('message'))->toBe('La hora de la reserva debe ser futura.')
+    expect($response->json('errors.reserved_at.0'))->toBe('La hora de la reserva debe ser futura.')
         ->and(Reservation::count())->toBe(0);
 });
 
