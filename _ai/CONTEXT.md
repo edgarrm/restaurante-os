@@ -122,13 +122,14 @@ quedó guardado (`_ai/design/screen-inventory.md` tiene el detalle del proyecto
 Stitch), pero la generación de pantallas está fallando del lado del servicio —
 retomar antes de escribir el primer `_ai/specs/{feature}.spec.md`.
 
-**2026-08-12 — Los 9 specs del registry (#0-#8) están `✅ Implemented`**
+**2026-08-12 — Los 10 specs del registry (#0-#9) están `✅ Implemented`**
 (ver `_ai/docs/spec-registry.md`): Onboarding de Tenant, Gestión de Mesas,
 Gestión de Menú, Gestión de Staff, Mapa de Mesas, Toma de Pedido, Cocina
-(KDS), Cobro, Reservas — backend completo (Actions + controllers + rutas +
-tests Pest) en los 9. F-01 a F-06 del threat model están 🟢 Resueltos;
-quedan abiertos F-07 (bloqueo de tablet, decisión de producto pendiente del
-cliente ancla) y F-08/F-09/F-10 (bajos, no bloqueantes).
+(KDS), Cobro, Reservas, Inventario — backend completo (Actions +
+controllers + rutas + tests Pest) en los 10. F-01 a F-06 del threat model
+están 🟢 Resueltos; quedan abiertos F-07 (bloqueo de tablet, decisión de
+producto pendiente del cliente ancla) y F-08/F-09/F-10 (bajos, no
+bloqueantes).
 
 **Pantallas Vue construidas (9 de 9 pantallas Must del inventario,
 `_ai/design/screen-inventory.md` — #7 fusionada en #6, ver nota de
@@ -173,6 +174,21 @@ pantalla Vue de Reservas".
 #7 fusionada en #6) están construidas — ver detalle de verificación por
 pantalla arriba y en `decision-log.md`.
 
+**Inventario (#10/#11 del inventario, Should Have, primera feature Should
+implementada):** `InventarioController` (`index`+`store`+`adjust`, todos
+renderizan `Inventario/Index` — nombre de componente con mayúscula inicial,
+así lo especifica `x-inertia-component` en api-contract.yaml, a diferencia
+del resto de dominios) es una sola pantalla — #11 "Ajuste de inventario" se
+fusiona en #10, mismo patrón que Reservas. `POST /inventario` (alta de
+insumo) se agregó en PASO 0 del spec — gap de cobertura entre el PRD y
+api-contract.yaml, mismo criterio que US-6.3. Resaltado ámbar/rojo
+(`quantity_on_hand <= low_stock_threshold` / `<= 0`) reutiliza los tokens
+de status ya definidos para Mesas. Click-through completo verificado en
+browser real: crear insumo, salida que excede el stock (banner inline, no
+modal crudo), salida que deja el stock en el umbral (ámbar) y en 0 (rojo),
+light y dark mode. Sin errores en consola. Ver `decision-log.md` para el
+detalle de PASO 0 y verificación.
+
 **Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
 app (consola: "Hydration completed but contains mismatches" / error
 `createProvider`) — causa clics sintéticos poco confiables en algunos
@@ -184,7 +200,7 @@ que aplica la clase `dark` antes de montar Vue.
 Brecha documentada pendiente en `decision-log.md`: transiciones de
 `Reservation` a `sentada`/`cancelada` (#8, sin endpoint ni control en UI).
 
-Próximo paso a decidir con el usuario: con las 9 pantallas Must
-construidas, arrancar Should Have (Inventario, sin spec todavía) o Could
-Have (split bill, dashboard del día) — ver `_ai/docs/spec-registry.md`,
-sección "Pendiente de spec".
+Próximo paso a decidir con el usuario: con las 9 pantallas Must y la
+primera Should (Inventario) construidas, seguir con el resto de Should
+Have (si aparece más adelante) o arrancar Could Have (split bill,
+dashboard del día) — ver `_ai/docs/spec-registry.md`.

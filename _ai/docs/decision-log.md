@@ -845,3 +845,110 @@ combinando ambos lados (ítem de nav "Reservas" + "Staff"/"Gestión de
 Mesas" en `AppSidebar.vue`, entradas de `decision-log.md` concatenadas en
 orden cronológico, conteo de pantallas Must en `CONTEXT.md` actualizado a
 9/9).
+
+### 2026-08-12 — PASO 0 de `inventario.spec.md` (#9, US-5.1/US-5.2, primera
+feature Should Have): gap de alta de insumos, nombre de componente y
+alcance de autorización
+
+Primera sesión sin backend previo del dominio (worktree `feature/inventario`
+aislado, mismo patrón de las sesiones anteriores). Decisiones de PASO 0,
+documentadas en el spec y aquí:
+
+- **Gap: no existe operación de alta de insumos** ni en el PRD ni en
+  `api-contract.yaml` — solo `GET /inventario` (listar) y
+  `POST /inventario/{item}/ajustar` (ajustar). Sin una forma de crear el
+  primer `InventoryItem` la pantalla no sirve el día uno, mismo problema
+  que tuvo Mapa de Mesas sin Gestión de Mesas (US-6.3). Se agregó
+  `POST /inventario` (alta simple: `name`, `unit`, `low_stock_threshold`,
+  `quantity_on_hand` inicial opcional, default 0) — mismo criterio que la
+  nota "US-6.3 no estaba en el PRD original" en `spec-registry.md`.
+- **Nombre de componente `Inventario/Index` con mayúscula inicial** —
+  confirmado literalmente en `x-inertia-component` de `api-contract.yaml`
+  para ambas rutas del contrato original, a diferencia de todos los demás
+  dominios (`mesas/Index`, `menu/Index`, `tables/Index`, etc., en
+  minúscula). Se respetó el contrato tal cual: archivo en
+  `resources/js/pages/Inventario/Index.vue`,
+  `Inertia::render('Inventario/Index', ...)`.
+- **Una sola pantalla**: el ajuste de stock (US-5.2) es un diálogo dentro
+  del índice, no una ruta/pantalla separada — mismo patrón que Reservas
+  (#6/#7) y Gestión de Menú. `screen-inventory.md` #11 se fusiona en #10.
+- **Autorización exclusiva `role=admin`**, sin compartir con
+  mesero/cocina (a diferencia de Mesas/Cobro/Reservas) — el PRD (US-5.1,
+  US-5.2) solo menciona admin en ambas historias.
+- **`quantity_on_hand` excluido de `$fillable`** (mismo patrón que
+  `Table.status`/`MenuItem.available`, ver `.ai/rules/actions.md`): solo
+  se muta vía `forceFill()` desde `CreateInventoryItemAction` (valor
+  inicial) y `RegisterInventoryMovementAction` (ajustes), nunca desde
+  `$request->validated()` directo.
+- **`InsufficientStockException`** (`app/Exceptions/Inventory/`, mismo
+  patrón que `InsufficientPaymentException`): una `salida` que dejaría
+  `quantity_on_hand` negativa se rechaza con
+  `ValidationException::withMessages(['quantity' => ...])` (no
+  `abort(422, ...)` — mismo trap ya documentado en OrderController/
+  PaymentController/ReservationController, el header `X-Inertia` se
+  pierde con `abort()` plano).
+
+**Backend (TDD):** migraciones `inventory_items`/`inventory_movements`
+(`InventoryMovement` sin `tenant_id` propio, hereda aislamiento vía
+`InventoryItem`, mismo patrón que `Payment`↔`Order`); modelos con
+`BelongsToTenant`/casts `decimal:3`; `InventoryItemPolicy` (mismo patrón
+que `TablePolicy`); `CreateInventoryItemAction` +
+`RegisterInventoryMovementAction`; `InventarioController`; rutas en
+`routes/tenant.php` bajo `role:admin`. Tests escritos primero (rojo
+confirmado: `Route [inventario.index] not defined`, `Class
+"App\Actions\Inventory\CreateInventoryItemAction" not found`), luego
+implementación (verde: 8 Feature + 14 Unit, suite completa 187/187 con 4
+skipped preexistentes).
+
+**Trap del entorno reencontrado** (ya documentado en
+`.ai/rules/migrations.md` y en la sesión de Reservas): el
+`database/database.sqlite` que sirve `demo.localhost:8000` vía
+`composer run dev` es un symlink al sqlite de `~/Herd/restaurante-os`
+(main), compartido entre worktrees — no se actualiza con las migraciones
+nuevas hasta correr `php artisan migrate --no-interaction` explícitamente
+contra él (Pest usa `RefreshDatabase`, una BD de test separada). Primer
+login tras `composer run dev` dio `SQLSTATE[HY000]: ... no such table:
+inventory_items`; corregido migrando el sqlite compartido antes de la
+verificación visual.
+
+**Worktree Orca ya provisto** en `feature/inventario` con `node_modules`
+parcialmente poblado y `vendor` vacío (mismo patrón que sesiones previas):
+`composer install` sí hizo falta, `npm install` también (solo 32
+paquetes de node_modules antes de instalar). Mismo `pnpm-workspace.yaml`
+corrupto (`allowBuilds` con placeholder sin resolver) y `pnpm-lock.yaml`
+suelto ya documentados en la sesión de Reservas — revertido/borrado antes
+de `npm install`. Se permaneció en la rama `Inventario` provista por Orca
+(no se creó `feature/inventario` con `git worktree add` manualmente, ya
+existía la misma isolación vía el worktree preexistente).
+
+**Verificación visual en browser real** (`demo.localhost:8000`, login
+`admin.qa@demo.test`): crear insumo "Tomate" (20 kg, umbral 5 kg) → aparece
+en la lista sin resaltado; salida de 25 kg (> stock) → rechazada con
+banner inline "No hay stock suficiente de 'Tomate' para esta salida
+(disponible: 20.000 kg)." (no modal crudo); salida de 15 kg → stock baja a
+5 kg, exactamente el umbral, resaltado ámbar "Bajo el umbral"; salida de 5
+kg adicional → stock en 0, resaltado rojo "Sin stock"; confirmado en light
+y dark mode (forzado vía JS, ver nota abajo). Sin errores en consola. Datos
+de prueba borrados al terminar (mismo criterio que sesiones previas, DB
+compartida).
+
+**Bug de automatización de browser encontrado durante la verificación**
+(no relacionado con el código de la app): el trigger del diálogo "Nuevo
+insumo" y el `<Select>` de "Tipo" no respondieron a un primer clic
+sintético — mismo síntoma que el mismatch de hidratación ya documentado
+("un `.click()` nativo sí funciona"). Adicionalmente, la extensión de
+Chrome del entorno quedó en un estado roto (`Cannot access a
+chrome-extension:// URL of different extension`) varias veces durante la
+sesión, requiriendo recrear el tab/grupo de tabs repetidamente — no
+reproducible con acciones de usuario real, exclusivo del entorno de
+automatización.
+
+**Verificado con:** `tests/Feature/InventarioTest.php` (8/8),
+`tests/Unit/Actions/Inventory/*` (14/14), suite completa (`php artisan
+test --compact`, 191 tests / 187 passed / 4 skipped preexistentes), `npm
+run lint:check` (0 errores), `npm run types:check` (0 errores), `npm run
+build` (✓), `vendor/bin/pint --dirty` (sin cambios), y verificación visual
+manual en browser real descrita arriba.
+
+No se hizo merge a `main` — `feature/inventario` queda lista para revisión
+manual, a pedido explícito del prompt de arranque de esta sesión.

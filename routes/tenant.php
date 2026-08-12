@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\OrderController;
@@ -166,5 +167,21 @@ Route::middleware([
         ->group(function () {
             Route::get('/', [ReservationController::class, 'index'])->name('index');
             Route::post('/', [ReservationController::class, 'store'])->name('store');
+        });
+
+    // Inventario (_ai/specs/inventario.spec.md, #9, US-5.1/US-5.2, Should).
+    // Mismo patrón que Gestión de Mesas/Menú: `role:admin` resuelve F-06
+    // para esta pantalla completa (a diferencia de Mesas/Cobro/Reservas,
+    // aquí ningún otro rol tiene acceso — ver PASO 0 del spec);
+    // InventoryItemPolicy autoriza cada acción sobre el modelo específico.
+    // `POST /inventario` (alta de insumo) no estaba en api-contract.yaml
+    // original — gap agregado en PASO 0, mismo criterio que US-6.3.
+    Route::middleware(['auth', 'role:admin'])
+        ->prefix('inventario')
+        ->name('inventario.')
+        ->group(function () {
+            Route::get('/', [InventarioController::class, 'index'])->name('index');
+            Route::post('/', [InventarioController::class, 'store'])->name('store');
+            Route::post('/{item}/ajustar', [InventarioController::class, 'adjust'])->name('adjust');
         });
 });

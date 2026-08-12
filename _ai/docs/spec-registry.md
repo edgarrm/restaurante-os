@@ -18,6 +18,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 7 | Cobro | `_ai/specs/cobro.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 8 | Reservas | `_ai/specs/reservas.spec.md` | ✅ Implemented | ✅ | ✅ | #1 (opcional, `table_id` nullable) |
+| 9 | Inventario | `_ai/specs/inventario.spec.md` | ✅ Implemented | ✅ | ✅ | #0 |
 
 **#0 es el bloqueador real de todos los demás** — sin un tenant existente, las
 rutas de `routes/tenant.php` no son alcanzables (requieren
@@ -39,11 +40,6 @@ implementando el spec #1 (Gestión de Mesas): cualquier spec futuro con
 restricción por rol de pantalla completa solo agrega
 `->middleware('role:admin')` (o los roles que aplique) a su grupo de rutas
 en `routes/tenant.php` — ver ADR-007.
-
-## Pendiente de spec (Should Have — no bloquea MVP)
-
-- Inventario (US-5.1, US-5.2) — sin spec todavía. No es prerequisito de ninguna
-  feature Must Have; se aborda después de completar la tabla de arriba.
 
 ## Notas
 
