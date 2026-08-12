@@ -32,8 +32,8 @@ generación de código.
 | 8 | Gestión de menú | `/menu` | CRUD de platillos: nombre, precio, categoría, disponibilidad. Dato base para que el POS funcione. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 9 | Gestión de staff | `/staff` | Admin crea/edita cuentas de mesero y cocina, asigna rol. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 9b | Gestión de mesas | `/mesas/gestion` | Admin crea/edita mesas (nombre, capacidad). Agregada en Fase 05 (US-6.3) — gap del PRD original. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
-| 10 | Inventario (stock) | `/inventario` | Lista de insumos con cantidad actual y umbral de alerta. Conteo simple, no costeo de receta. | Ancla, Independiente | Should | ⬜ | ⬜ | ⬜ |
-| 11 | Ajuste de inventario | `/inventario/{id}/ajustar` | Registrar entrada/salida manual de un insumo. | Ancla, Independiente | Should | ⬜ | ⬜ | ⬜ |
+| 10 | Inventario (stock) | `/inventario` | Lista de insumos con cantidad actual y umbral de alerta, resaltado ámbar/rojo. Incluye "Nuevo insumo" como diálogo (US-5.1, gap agregado en PASO 0) — no hay ruta/pantalla separada. | Ancla, Independiente | Should | ⬜ | ✅ | ⬜ |
+| 11 | Ajuste de inventario | *(fusionada en #10)* | El backend real (`InventarioController`: `index`+`store`+`adjust`, todos renderizan `Inertia/Index`) es una sola pantalla — no `/inventario/{id}/ajustar` como ruta navegable. El formulario de "Registrar movimiento" vive en un diálogo dentro del índice, mismo patrón que "Nueva reserva" (#6) y "Nuevo platillo" (#8). | Ancla, Independiente | Should | ⬜ | ✅ (ver #10) | ⬜ |
 | 12 | División de cuenta (split bill) | *(fusionada en #5)* | No es una pantalla separada — extiende `/mesas/{id}/cobro` (#5) con saldo pendiente, historial de pagos y un endpoint nuevo para pagos parciales, mismo patrón que #7→#6. Implementado como split por monto libre (`_ai/specs/division-de-cuenta.spec.md`); split por ítems queda documentado como brecha. | Independiente | Could | ⬜ | ✅ (ver #5) | ⬜ |
 | 13 | Dashboard del día | `/dashboard` | Resumen de ventas, mesas activas y reservas del día para el admin. | Ancla | Could | ⬜ | ⬜ | ⬜ |
 

@@ -69,3 +69,22 @@ export interface Reservation {
     status: ReservationStatus;
     table?: Table;
 }
+
+export interface InventoryItem {
+    id: number;
+    name: string;
+    unit: string;
+    quantity_on_hand: string;
+    low_stock_threshold: string;
+}
+
+export type InventoryMovementType = 'entrada' | 'salida';
+
+export interface InventoryMovement {
+    id: number;
+    inventory_item_id: number;
+    type: InventoryMovementType;
+    quantity: string;
+    note: string | null;
+    created_by: number;
+}

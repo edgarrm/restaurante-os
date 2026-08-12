@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { CalendarClock, ChefHat, LayoutGrid, Table2, Users, UtensilsCrossed } from '@lucide/vue';
+import { Boxes, CalendarClock, ChefHat, LayoutGrid, Table2, Users, UtensilsCrossed } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { index as cocinaIndex } from '@/routes/cocina';
+import { index as inventarioIndex } from '@/routes/inventario';
 import { index as menuIndex } from '@/routes/menu';
 import { index as mesasIndex } from '@/routes/mesas';
 import { index as reservasIndex } from '@/routes/reservas';
@@ -47,6 +48,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         items.push({ title: 'Menú', href: menuIndex(), icon: UtensilsCrossed });
         items.push({ title: 'Staff', href: staffIndex(), icon: Users });
         items.push({ title: 'Gestión de Mesas', href: tablesIndex(), icon: Table2 });
+        items.push({ title: 'Inventario', href: inventarioIndex(), icon: Boxes });
     }
 
     return items;
