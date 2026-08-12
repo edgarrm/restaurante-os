@@ -121,3 +121,18 @@ Sprint 1 — Fase 03 (Design vía Stitch) en pausa: el design system se generó 
 quedó guardado (`_ai/design/screen-inventory.md` tiene el detalle del proyecto
 Stitch), pero la generación de pantallas está fallando del lado del servicio —
 retomar antes de escribir el primer `_ai/specs/{feature}.spec.md`.
+
+**2026-08-12 — Los 8 specs Must Have del registry (#0-#8) están
+`✅ Implemented`** (ver `_ai/docs/spec-registry.md`): Onboarding de Tenant,
+Gestión de Mesas, Gestión de Menú, Gestión de Staff, Mapa de Mesas, Toma de
+Pedido, Cocina (KDS), Cobro, Reservas. Todo backend-only (Actions +
+controllers + rutas + tests Pest), **sin ninguna pantalla Vue todavía** —
+cada spec lo documenta explícitamente en su Definition of Done. F-01 a F-06
+del threat model están 🟢 Resueltos; quedan abiertos F-07 (bloqueo de
+tablet, decisión de producto pendiente del cliente ancla) y F-08/F-09/F-10
+(bajos, no bloqueantes). Brechas documentadas pendientes en
+`decision-log.md`: editar/quitar ítems de una orden (#5) y transiciones de
+`Reservation` a `sentada`/`cancelada` (#8). Próximo paso a decidir con el
+usuario: Fase 03 (pantallas Vue de las 8 features) o Should Have
+(Inventario, sin spec todavía) — ver `_ai/docs/spec-registry.md`, sección
+"Pendiente de spec".
