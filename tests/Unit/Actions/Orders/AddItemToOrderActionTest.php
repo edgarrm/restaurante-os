@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Orders\AddItemToOrderAction;
+use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\TableStatus;
 use App\Exceptions\Orders\MenuItemNotAvailableException;
 use App\Exceptions\Orders\TableNotAcceptingOrdersException;
@@ -62,4 +64,16 @@ test('agregar un ítem a una mesa en por_cobrar lanza excepción de dominio', fu
         ->toThrow(TableNotAcceptingOrdersException::class);
 
     expect(OrderItem::count())->toBe(0);
+});
+
+test('agregar un ítem a una orden lista la regresa a enviada_cocina (REDEV-31)', function () {
+    $table = Table::factory()->create(['status' => TableStatus::Ocupada]);
+    $mesero = User::factory()->create();
+    $order = Order::factory()->for($table)->create(['opened_by' => $mesero->id, 'status' => OrderStatus::Lista]);
+    OrderItem::factory()->for($order)->for(MenuItem::factory())->create(['status' => OrderItemStatus::Listo]);
+    $menuItem = MenuItem::factory()->create();
+
+    (new AddItemToOrderAction)->handle($table, $menuItem, 1, $mesero);
+
+    expect($order->fresh()->status)->toBe(OrderStatus::EnviadaCocina);
 });

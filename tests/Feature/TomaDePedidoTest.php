@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\TableStatus;
 use App\Models\MenuItem;
@@ -171,6 +172,25 @@ test('F-05: mesero del restaurante A pide /mesas/{mesa_del_restaurante_B}/pedido
         ->get(route('pedido.show', $tableB), inertiaXhrHeaders());
 
     $response->assertNotFound();
+});
+
+test('POST /mesas/{table}/pedido/items sobre una orden lista la regresa a enviada_cocina y reaparece en /cocina (REDEV-31)', function () {
+    $table = Table::factory()->for($this->tenant, 'tenant')->create(['status' => TableStatus::Ocupada]);
+    $order = Order::factory()->for($this->tenant, 'tenant')->for($table)->create(['opened_by' => $this->mesero->id, 'status' => OrderStatus::Lista]);
+    OrderItem::factory()->for($order)->for(MenuItem::factory()->for($this->tenant, 'tenant'))->create(['status' => OrderItemStatus::Listo]);
+    $menuItem = MenuItem::factory()->for($this->tenant, 'tenant')->create();
+
+    $response = $this->actingAs($this->mesero)
+        ->post(route('pedido.add-item', $table), ['menu_item_id' => $menuItem->id, 'quantity' => 1]);
+
+    $response->assertRedirect(route('pedido.show', $table));
+    expect($order->fresh()->status)->toBe(OrderStatus::EnviadaCocina);
+
+    $cocina = User::factory()->for($this->tenant, 'tenant')->cocina()->create();
+    $cocinaResponse = $this->actingAs($cocina)->get(route('cocina.index'), inertiaXhrHeaders());
+
+    $cocinaResponse->assertOk();
+    expect(collect($cocinaResponse->json('props.orders'))->pluck('id'))->toContain($order->id);
 });
 
 test('F-05: agregar un menu_item_id de otro restaurante falla y no se agrega a la orden', function () {

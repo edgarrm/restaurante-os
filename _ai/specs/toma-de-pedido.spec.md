@@ -58,6 +58,7 @@ orden pasa a status `enviada_cocina`.
 | Enviar a cocina con la orden vacía (forzado vía API directamente, sin pasar por el botón deshabilitado del UI) | 422 — "Agrega al menos un platillo antes de enviar a cocina" |
 | Mesa inexistente en la URL | 404 estándar de Laravel |
 | Cantidad de un ítem ajustada a 0 en el stepper | El renglón se elimina de "La Cuenta" (no queda un `OrderItem` con `quantity=0`) |
+| Se agrega un ítem a una orden que ya está `lista` (todos sus ítems previos `listo`) | La `Order` regresa a status `enviada_cocina` — el ítem nuevo (y la orden completa) vuelve a aparecer en `GET /cocina` (bug REDEV-31) |
 
 ## Error States
 | Error | Mensaje al usuario | Acción de recuperación |
@@ -127,6 +128,22 @@ orden pasa a status `enviada_cocina`.
       `/mesas/{mesa_del_restaurante_B}/pedido` → 404
 - [x] **F-05**: agregar un `menu_item_id` que pertenece a otro restaurante →
       404, no se agrega a la orden
+- [x] `POST /mesas/{table}/pedido/items` sobre una orden `lista` → la
+      `Order` regresa a `enviada_cocina` y el pedido reaparece en
+      `GET /cocina` (bug REDEV-31, ver nota abajo)
+
+> **Bug REDEV-31, corregido (ver `decision-log.md`):** `AddItemToOrderAction`
+> permitía agregar un `OrderItem` a una orden `lista` (la mesa sigue
+> `ocupada`, solo `por_cobrar` bloquea el agregado), pero `Order.status`
+> se quedaba en `lista` — `KitchenController::index()` solo filtra por
+> `enviada_cocina`, así que el ítem nuevo nunca llegaba a cocina en la
+> práctica. Confirmado con el usuario vía `AskUserQuestion` entre tres
+> opciones (revertir el status de la orden, ampliar el query de cocina, o
+> bloquear el agregado): se eligió revertir `Order.status` a
+> `enviada_cocina` dentro de `AddItemToOrderAction` cuando la orden estaba
+> `lista` — mantiene `KitchenController` como única fuente de verdad de
+> "activa" (`Order.status = enviada_cocina`) sin duplicar esa lógica en el
+> query de `completedOrders`.
 
 > Nota de implementación: igual que `gestion-mesas.spec.md` (#1), el "200"
 > original de este documento para `POST .../items` y `POST .../enviar`
