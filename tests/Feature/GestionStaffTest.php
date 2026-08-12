@@ -35,8 +35,13 @@ test('POST /staff con role=admin devuelve 422 y no crea la cuenta', function () 
             'role' => 'admin',
         ]);
 
+    // postJson fuerza Accept: application/json, así que aquí sí vemos el
+    // 422 JSON estándar de ValidationException (no abort() plano) — mismo
+    // criterio que OrderController/PaymentController (ver
+    // .ai/rules/feature.md).
     $response->assertStatus(422);
-    expect(User::where('email', 'falso-admin@example.test')->exists())->toBeFalse();
+    expect($response->json('errors.role.0'))->toBe('No se pueden crear cuentas de administrador desde aquí.')
+        ->and(User::where('email', 'falso-admin@example.test')->exists())->toBeFalse();
 });
 
 test('POST /staff con email duplicado devuelve 422', function () {
@@ -97,8 +102,13 @@ test('PATCH /staff/{user} con role=admin devuelve 422 y no modifica la cuenta', 
     $response = $this->actingAs($this->admin)
         ->patchJson(route('staff.update', $user), ['role' => 'admin']);
 
+    // patchJson fuerza Accept: application/json, así que aquí sí vemos el
+    // 422 JSON estándar de ValidationException (no abort() plano) — mismo
+    // criterio que OrderController/PaymentController (ver
+    // .ai/rules/feature.md).
     $response->assertStatus(422);
-    expect($user->refresh()->role)->toBe(Role::Mesero);
+    expect($response->json('errors.role.0'))->toBe('No se pueden crear cuentas de administrador desde aquí.')
+        ->and($user->refresh()->role)->toBe(Role::Mesero);
 });
 
 test('PATCH /staff/{user}/desactivar desactiva la cuenta sin eliminarla', function () {
