@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StaffController;
@@ -119,5 +120,19 @@ Route::middleware([
             Route::get('/', [OrderController::class, 'show'])->name('show');
             Route::post('/items', [OrderController::class, 'addItem'])->name('add-item');
             Route::post('/enviar', [OrderController::class, 'send'])->name('send');
+        });
+
+    // Cocina / KDS (_ai/specs/cocina-kds.spec.md, #6). `role:admin,cocina`
+    // resuelve F-06 para esta pantalla completa; sin Policy — el spec dice
+    // explícitamente que no hay reglas de autorización propias (ninguna
+    // estación de cocina separada en el MVP). F-05: {orderItem} no usa
+    // route model binding implícito porque OrderItem no tiene
+    // BelongsToTenant propio — ver KitchenController::markReady().
+    Route::middleware(['auth', 'role:admin,cocina'])
+        ->prefix('cocina')
+        ->name('cocina.')
+        ->group(function () {
+            Route::get('/', [KitchenController::class, 'index'])->name('index');
+            Route::patch('items/{orderItem}/listo', [KitchenController::class, 'markReady'])->name('items.mark-ready');
         });
 });

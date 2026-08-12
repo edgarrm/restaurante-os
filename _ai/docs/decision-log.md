@@ -163,3 +163,30 @@ cuando se construya la pantalla Vue de `/mesas/{table}/pedido`.
 **Verificado con:** `tests/Unit/Actions/Orders/*`,
 `tests/Feature/TomaDePedidoTest.php`, y la suite completa
 (`php artisan test --compact`, 114 passed / 4 skipped).
+
+### 2026-08-11 — PASO 0 de `cocina-kds.spec.md` (#6): alcance de `GET /cocina`
+**Estado:** 🟢 Resuelta — implementada en `cocina-kds.spec.md` (#6), 2026-08-11
+**Contexto:** el spec tiene una ambigüedad entre secciones sobre qué debe
+devolver `GET /cocina`. "Inputs & Outputs" dice que el input son "ítems con
+`status=pendiente`" — sugiere filtrar también por status del ítem. El Happy
+Path (paso 2, "tarjetas de órdenes... cada una con sus ítems") sugiere
+devolver todos los ítems de la orden, incluyendo los ya `listo`, para que
+cocina tenga contexto completo. El único Integration Test explícito ("`GET
+/cocina` devuelve solo ítems de órdenes en `enviada_cocina`") es ambiguo
+entre ambas lecturas: filtra por status de la `Order`, pero no aclara si
+también filtra por status del ítem.
+**Opciones evaluadas:** (a) filtrar solo por `Order.status = enviada_cocina`
+y devolver todos los `OrderItem` de esa orden; (b) además, excluir del
+payload los `OrderItem` ya en `listo`.
+**Decisión:** (a), confirmada con el usuario antes de escribir el primer
+test (ver `AskUserQuestion` de esta sesión). Es consistente con el criterio
+ya establecido en `toma-de-pedido.spec.md` (#5) de hacer TDD contra los Test
+Cases del spec, no contra la prosa de Happy Path/Inputs & Outputs — el único
+test explícito solo exige filtrar por status de la `Order`. Añadir un
+filtro adicional por status del ítem habría sido anticiparse al contrato.
+Efecto práctico: cuando una `Order` pasa a `lista` (todos sus ítems
+`listo`), la orden completa desaparece de `GET /cocina` — consistente con
+el Happy Path, paso 5.
+**Verificado con:** `tests/Unit/Actions/Orders/MarkOrderItemReadyActionTest.php`,
+`tests/Feature/CocinaKdsTest.php`, y la suite completa (`php artisan test
+--compact`, 125 passed / 4 skipped).

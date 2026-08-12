@@ -1,7 +1,7 @@
 # Feature: Cocina (KDS)
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Stories:
@@ -80,23 +80,35 @@ para el mesero.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `MarkOrderItemReadyAction`: cambia `status` de `pendiente`/`preparando` a
+- [x] `MarkOrderItemReadyAction`: cambia `status` de `pendiente`/`preparando` a
       `listo`
-- [ ] `MarkOrderItemReadyAction`: es idempotente — marcar un ítem ya `listo` no
+- [x] `MarkOrderItemReadyAction`: es idempotente — marcar un ítem ya `listo` no
       lanza error
-- [ ] Lógica de orden completa: cuando todos los `OrderItem` de una `Order` están
+- [x] Lógica de orden completa: cuando todos los `OrderItem` de una `Order` están
       `listo`, la `Order` pasa a status `lista`
 
 ### Integration Tests
-- [ ] `GET /cocina` devuelve solo ítems de órdenes en `enviada_cocina`
-- [ ] `PATCH /cocina/items/{orderItem}/listo` → 200, ítem actualizado
-- [ ] `PATCH /cocina/items/{orderItem}/listo` sobre un ítem ya `listo` → 200,
+- [x] `GET /cocina` devuelve solo ítems de órdenes en `enviada_cocina`
+- [x] `PATCH /cocina/items/{orderItem}/listo` → 200, ítem actualizado
+- [x] `PATCH /cocina/items/{orderItem}/listo` sobre un ítem ya `listo` → 200,
       sin efecto adicional (idempotente)
-- [ ] Usuario con `role=mesero` accede a `/cocina` → 403
-- [ ] **F-05**: `PATCH /cocina/items/{orderItem}/listo` sobre un ítem de otro
+- [x] Usuario con `role=mesero` accede a `/cocina` → 403
+- [x] **F-05**: `PATCH /cocina/items/{orderItem}/listo` sobre un ítem de otro
       restaurante → 404, y el ítem del otro tenant NO cambia de estado
-- [ ] **F-05**: `GET /cocina` del restaurante A no incluye ningún pedido del
+- [x] **F-05**: `GET /cocina` del restaurante A no incluye ningún pedido del
       restaurante B
+
+> **Nota de implementación (PASO 0, ver `decision-log.md`, 2026-08-11):**
+> `GET /cocina` filtra únicamente por `Order.status = enviada_cocina` y
+> devuelve **todos** los `OrderItem` de esa orden (incluyendo los ya
+> `listo`) — no filtra además por status del ítem. Ver decisión completa en
+> `decision-log.md`.
+>
+> **Nota de implementación:** igual que en #5, el "200" original de este
+> documento para `PATCH .../listo` asumía una respuesta directa; se
+> implementó como redirect 302 a `cocina.index` (patrón PRG ya establecido
+> en este repo). Los tests verifican `assertRedirect()` + el estado del
+> modelo en BD.
 
 ### E2E Tests
 - [ ] Happy path: mesero envía un pedido a cocina (spec `toma-de-pedido`) → el
@@ -105,9 +117,12 @@ para el mesero.
 - [ ] Cero pedidos pendientes muestra el estado vacío correcto
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en tablet real
-- [ ] Sin errores en consola / logs
-- [ ] Marcar listo dentro de 500ms p95
+- [x] Sin errores en consola / logs
+- [ ] Marcar listo dentro de 500ms p95 — pendiente de medir junto con la
+      pantalla Vue
+- [ ] Pantalla Vue de `/cocina` (E2E) — pendiente, fuera de alcance de esta
+      sesión (backend only, mismo criterio que #1-#5)
