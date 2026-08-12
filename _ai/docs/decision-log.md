@@ -534,6 +534,24 @@ empezando por Gestión de Menú. `_ai/CONTEXT.md` actualizado con el estado
 real. Ver [[spec-relay-workflow]] y `decision-log-habit` (verificar antes
 de afirmar que algo está completo).
 
+### 2026-08-12 — Pantalla Vue de Gestión de Staff (#3)
+
+**Estado:** 🟡 Implementada, verificación E2E en browser pendiente (herramienta no disponible en sesión)
+**Contexto:** pantalla CRUD de cuentas de staff (`resources/js/pages/staff/Index.vue`). Backend ya existía completo (spec #3, Implemented, 12 tests Pest). Sin `AskUserQuestion` de PASO 0: no había ambigüedad de contrato.
+
+**Decisiones de diseño (no ambiguas, criterio de consistencia con el resto de la app):**
+- Lista plana (sin agrupación — no hay categorías en staff, a diferencia de Menú), con nombre, email, badge de rol y badge de estado activo/inactivo.
+- Tres acciones: "Nueva cuenta" (diálogo con useForm — name, email, password, role), "Editar rol" (diálogo con useForm — solo role), "Desactivar" (diálogo de confirmación con `router.patch` — no es reversible desde UI, mismo criterio de "destructivo" ya aplicado en Gestión de Mesas).
+- `Select` de reka-ui (`mesero`/`cocina`) para campo `role` en ambos diálogos — mitiga el trap de `abort(422, ...)` para `InvalidStaffRoleException`: al ofrecer solo los dos valores válidos, ese path se vuelve inalcanzable desde la UI.
+- Botón "Desactivar" solo visible para cuentas activas (`v-if="member.is_active"`).
+- Nav: se agregó "Staff" a `AppSidebar.vue` con ícono `Users` de lucide, visible solo para `admin` (mismo patrón que "Menú").
+
+**Plomería de worktree — no ambigua, documentada aquí:**
+El worktree en `/Users/edgarrealmorales/orca/workspaces/restaurante-os/gestion-staff` no tiene `vendor` ni `.env` (gitignoreados, existen solo en `/Users/edgarrealmorales/Herd/restaurante-os`). Los archivos de Wayfinder (`resources/js/routes/*`, `actions/*`, `wayfinder/*`) también están gitignoreados y no existían en el worktree. Solución: symlinks `vendor` → main y `.env` → main, más copiar los directorios gitignoreados del main al worktree. El build además requiere PHP 8.5 en PATH (`/tmp/php85-bin/php` → `php85`) porque el plugin Wayfinder de Vite corre `php artisan` al compilar y el `php` del PATH del shell es 8.1.
+
+**Verificado con:** `npm run lint:check` (0 errores), `npm run types:check` (0 errores), `npm run build` (✓ 3254 modules, build exitoso con PHP 8.5 en PATH), tests Pest 12/12 (`php artisan test --compact --filter=GestionStaff`, corrido desde `/Users/edgarrealmorales/Herd/restaurante-os`).
+**No verificado — bloqueado por herramienta:** verificación visual en browser real. Las herramientas `mcp__claude-in-chrome__*` y `mcp__Claude_Browser__*` no estaban disponibles en esta sesión. Pendiente para la próxima sesión de frontend: verificar render de lista, crear cuenta, editar rol y desactivar.
+
 ### 2026-08-12 — Pantalla Vue de Gestión de Menú (#2)
 
 **Estado:** 🟡 Implementada, verificación E2E en browser incompleta
