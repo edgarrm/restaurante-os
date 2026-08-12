@@ -113,8 +113,9 @@ público para que el cliente final reserve directamente.
 >   redirect 302 a `reservas.index`, mismo patrón PRG que #5/#6/#7.
 
 ### E2E Tests
-- [ ] Happy path: staff crea una reserva sin mesa asignada → aparece en el
-      calendario del día correspondiente
+- [x] Happy path: staff crea una reserva sin mesa asignada → aparece en el
+      calendario del día correspondiente (verificado manualmente en
+      browser real, ver `decision-log.md`)
 
 ## Definition of Done
 - [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
@@ -124,5 +125,6 @@ público para que el cliente final reserve directamente.
 - [x] Sin errores en consola / logs
 - [x] `customer_name`/`customer_phone` ausentes de logs de aplicación (nunca
       se loggean explícitamente)
-- [ ] Pantalla Vue de `/reservas` (E2E) — pendiente, fuera de alcance de esta
-      sesión (backend only, mismo criterio que #1-#7)
+- [x] Pantalla Vue de `/reservas` (E2E) — `resources/js/pages/reservas/Index.vue`,
+      construida y verificada en browser real (ver `decision-log.md`,
+      entrada del 2026-08-12 "PASO 0 de la pantalla Vue de Reservas")

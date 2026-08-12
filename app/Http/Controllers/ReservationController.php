@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\Table;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,6 +31,7 @@ class ReservationController extends Controller
 
         return Inertia::render('reservas/Index', [
             'reservations' => $reservations,
+            'tables' => Table::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -64,7 +66,14 @@ class ReservationController extends Controller
         try {
             $action->handle($data, $table);
         } catch (PastReservationException $exception) {
-            abort(422, $exception->getMessage());
+            // abort(422, ...) plano no lleva X-Inertia en un cliente Inertia
+            // real (Accept: text/html) — Inertia lo muestra como modal con
+            // HTML crudo en vez del error inline del form. Mismo fix que
+            // OrderController/PaymentController (ver decision-log.md, PASO 0
+            // de Toma de Pedido y Cobro).
+            throw ValidationException::withMessages([
+                'reserved_at' => $exception->getMessage(),
+            ]);
         }
 
         return to_route('reservas.index');

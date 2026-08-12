@@ -582,3 +582,97 @@ hidratación (sospecha original: script inline de `app.blade.php` que
 aplica la clase `dark` antes de montar Vue, ver entrada de Mapa de Mesas);
 (b) completar el click-through real de esta pantalla en cuanto la
 extensión esté disponible.
+
+### 2026-08-12 — PASO 0 de la pantalla Vue de Reservas (#8, filas #6/#7 del inventario)
+
+**Estado:** 🟢 Resuelta — implementada en `resources/js/pages/reservas/Index.vue`,
+branch `Reservas` (worktree propio), sin mergear a `main` todavía.
+**Contexto:** sesión solo-Vue, backend ya completo (spec #8, Implemented).
+Dos decisiones de PASO 0 confirmadas antes de tocar el primer componente:
+
+1. **Fusión #6/#7 del inventario.** El inventario original
+   (`screen-inventory.md`) lista "Calendario de reservas" (#6) y "Nueva
+   reserva" (#7) como filas separadas, pero `ReservationController` solo
+   tiene `index`+`store`, ambos renderizando `reservas/Index` — es una
+   sola pantalla. El formulario de nueva reserva vive en un diálogo
+   (`Dialog` + `useForm`), mismo patrón que "Nuevo platillo" en
+   `menu/Index.vue`. `screen-inventory.md` actualizado: #7 marcada como
+   fusionada en #6, ambas ✅ en Stack.
+2. **Manejo de errores de fecha pasada — mismo trap ya documentado en
+   #3/#7 (Toma de Pedido/Cobro).** `ReservationController::store` usaba
+   `abort(422, $exception->getMessage())` para `PastReservationException`,
+   sin probar contra un cliente Inertia real — mismo bug de plomería que
+   `OrderController`/`PaymentController` antes de su fix. Corregido a
+   `ValidationException::withMessages(['reserved_at' => ...])` antes de
+   escribir el primer componente Vue (anticipado por el prompt de arranque
+   de esta sesión). Ajustado el test correspondiente en
+   `ReservasTest.php` (`errors.reserved_at.0` en vez de `message`, mismo
+   criterio que `CobroTest`/`TomaDePedidoTest`).
+
+**Otro cambio de plomería, no ambiguo (documentado aquí, no preguntado):**
+`ReservationController::index` no pasaba la lista de mesas — necesaria
+para el selector opcional de mesa del diálogo. Se agregó
+`'tables' => Table::query()->orderBy('name')->get()`, mismo patrón que
+`TableController::index`.
+
+**Bug encontrado y corregido en verificación manual: desfase de huso
+horario en la hora mostrada.** `APP_TIMEZONE=UTC` (`config/app.php`) +
+`<input type="datetime-local">` (valor naive, sin zona) hacen que el
+servidor guarde la hora tal cual se tipeó, interpretada como UTC. Al
+mostrarla, `new Date(reserved_at).toLocaleTimeString()` sin fijar
+`timeZone` hace que el navegador reinterprete esos dígitos en la zona
+horaria *local del viewer* — se tipeó 8:00 p.m. y la lista mostraba
+1:00 p.m. en un navegador con otro huso que el servidor. Corregido
+fijando `timeZone: 'UTC'` en el formateador, para que se muestren los
+mismos dígitos que se guardaron (ver comentario en `formatTime`,
+`reservas/Index.vue`). Aplicaría a cualquier pantalla futura que muestre
+un datetime capturado por el usuario vía `datetime-local` bajo el mismo
+`APP_TIMEZONE=UTC`.
+
+**Primer uso del componente `resources/js/components/ui/select` en el
+proyecto** (selector opcional de mesa) — confirmado funcional (reka-ui),
+con sentinel `"sin-mesa"` porque `SelectItem` no acepta `value=""`,
+convertido a `null` en `createForm.transform()` antes de enviar.
+
+**Entorno de este worktree (Orca), no del código de la app:**
+- El worktree se creó con `node_modules` ya poblado pero `vendor` vacío;
+  `composer install` sí hizo falta, `npm install` no (ver corrección del
+  usuario en esta sesión — no asumir que un worktree nuevo necesita
+  reinstalar todo sin verificar primero).
+- Se encontró y limpió un `pnpm-lock.yaml` suelto (no rastreado) +
+  `pnpm-workspace.yaml` corrupto (bloque `allowBuilds` con placeholder sin
+  resolver, `"set this to true or false"`) que hacían que `php artisan
+  dev` detectara `pnpm` en vez de `npm` (el proyecto usa npm, ver
+  `.ai/rules/general.md`) y fallara con `ERR_PNPM_IGNORED_BUILDS`. No es
+  un archivo del proyecto — probablemente un `pnpm install` corrido por
+  error antes de esta sesión. `pnpm-workspace.yaml` revertido a su versión
+  commiteada, `pnpm-lock.yaml` borrado.
+- `.env` de este worktree = copia del `.env` de `~/Herd/restaurante-os`
+  (main), con `database/database.sqlite` symlinkeado al sqlite real de
+  main (indicación explícita del usuario: "ya está conectado a una DB").
+  Los datos de prueba creados durante la verificación manual (reservas
+  "Ana Pérez", "Carlos Ruiz") se borraron al terminar para no ensuciar la
+  DB compartida.
+- `demo.restaurante-os.test` (Herd, sirve `~/Herd/restaurante-os`) **no
+  sirve el código de este worktree** — se confirmó con un 500
+  (`ViteException: Unable to locate file... reservas/Index.vue`) que main
+  no tiene este trabajo. Verificación real se hizo contra
+  `demo.localhost:8000`, con `php artisan dev` corriendo en este worktree
+  (mismo patrón que #3/#5/#7). `main` además ya avanzó con merges de las
+  sesiones `login`/`gestion-staff` que este branch no tiene.
+
+**Verificado con:** `tests/Feature/ReservasTest.php` (7/7), suite completa
+(`php artisan test --compact`, 169 tests / 165 passed / 4 skipped), `npm
+run lint:check`, `npm run types:check`, y verificación visual manual en
+browser real (`demo.localhost:8000`, login `admin.qa@demo.test`): crear
+reserva con mesa asignada, crear reserva sin mesa (aparece "Sin mesa
+asignada"), reserva de hoy aparece en la lista y una de fin de año no
+(confirma el filtro `whereDate` sin selector de fecha), fecha pasada
+rechazada con banner inline (`InputError`, no modal crudo), light y dark
+mode. Sin errores en consola.
+
+**No hago merge a `main` yo mismo** (instrucción explícita del prompt de
+arranque) — branch `Reservas` queda lista con los commits de esta sesión.
+Conflicto esperado en `AppSidebar.vue` y los 3 archivos de `_ai/` al
+mergear contra el `main` actual (ya adelantado por `login`/
+`gestion-staff`).

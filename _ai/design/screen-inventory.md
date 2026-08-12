@@ -27,8 +27,8 @@ generación de código.
 | 3 | Toma de pedido | `/mesas/{id}/pedido` | Agregar ítems del menú a la cuenta de una mesa. Debe ser operable sin entrenamiento previo. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 4 | Cocina (KDS) | `/cocina` | Lista de pedidos entrantes en tiempo real, con acción de marcar ítem/orden como listo. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 5 | Cobro / cierre de cuenta | `/mesas/{id}/cobro` | Aplica pago a la cuenta de una mesa y la libera. Un solo método de pago en v1. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
-| 6 | Calendario de reservas | `/reservas` | Vista de reservas del día/semana, gestionada por staff (no pública). | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
-| 7 | Nueva reserva | `/reservas/nueva` | Formulario simple: nombre, teléfono, hora, número de personas, mesa asignada. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
+| 6 | Calendario de reservas | `/reservas` | Vista de reservas del día, gestionada por staff (no pública). Incluye "Nueva reserva" como diálogo (ver nota) — no hay ruta/pantalla separada. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
+| 7 | Nueva reserva | *(fusionada en #6)* | El backend real (`ReservationController`: solo `index`+`store`, ambos renderizan `reservas/Index`) es una sola pantalla — no `/reservas/nueva`. El formulario vive en un diálogo dentro del calendario, mismo patrón que "Nuevo platillo" (#8). | Ancla, Independiente | Must | ⬜ | ✅ (ver #6) | ⬜ |
 | 8 | Gestión de menú | `/menu` | CRUD de platillos: nombre, precio, categoría, disponibilidad. Dato base para que el POS funcione. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 9 | Gestión de staff | `/staff` | Admin crea/edita cuentas de mesero y cocina, asigna rol. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 9b | Gestión de mesas | `/mesas/gestion` | Admin crea/edita mesas (nombre, capacidad). Agregada en Fase 05 (US-6.3) — gap del PRD original. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |

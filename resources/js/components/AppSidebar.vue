@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChefHat, LayoutGrid, UtensilsCrossed } from '@lucide/vue';
+import { CalendarClock, ChefHat, LayoutGrid, UtensilsCrossed } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +17,7 @@ import {
 import { index as cocinaIndex } from '@/routes/cocina';
 import { index as menuIndex } from '@/routes/menu';
 import { index as mesasIndex } from '@/routes/mesas';
+import { index as reservasIndex } from '@/routes/reservas';
 import type { NavItem } from '@/types';
 
 // Nav de restaurante-os (ver _ai/design/screen-inventory.md) — se amplía
@@ -33,6 +34,7 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (role.value === 'admin' || role.value === 'mesero') {
         items.push({ title: 'Mesas', href: mesasIndex(), icon: LayoutGrid });
+        items.push({ title: 'Reservas', href: reservasIndex(), icon: CalendarClock });
     }
 
     if (role.value === 'admin' || role.value === 'cocina') {
