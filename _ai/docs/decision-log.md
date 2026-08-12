@@ -600,3 +600,76 @@ hidratación (sospecha original: script inline de `app.blade.php` que
 aplica la clase `dark` antes de montar Vue, ver entrada de Mapa de Mesas);
 (b) completar el click-through real de esta pantalla en cuanto la
 extensión esté disponible.
+
+### 2026-08-12 — Pantalla Vue de Gestión de Mesas (#1)
+
+**Estado:** 🟢 Implementada y verificada
+**Contexto:** backend ya existía completo (spec #1, Implemented,
+`TableController` + `CreateTableAction`/`UpdateTableAction`/
+`DeleteTableAction`). Sesión solo-Vue: `resources/js/pages/tables/Index.vue`.
+
+**PASO 0 (confirmado antes de nombrar el archivo, sin ambigüedad final):**
+- `TableController::index` ya llamaba `Inertia::render('tables/Index', …)`
+  y las rutas ya estaban nombradas `tables.index`/`store`/`update`/`destroy`
+  (prefix real `/mesas/gestion`, ver `routes/tenant.php`) — el archivo
+  correcto era `resources/js/pages/tables/Index.vue`, no `mesas/gestion/`.
+- El link roto documentado en `resources/js/pages/mesas/Index.vue:79`
+  (`tablesIndex()` → `ViteException`, componente inexistente) queda
+  resuelto por esta sesión sin tocar ese archivo: ahora `tables/Index.vue`
+  existe y el componente resuelve.
+- `resources/js/routes/tables/*` y los tipos `Table`/`TableStatus` en
+  `resources/js/types/models.ts` ya existían (generados/escritos en la
+  sesión backend de este spec) — no hizo falta `wayfinder:generate`.
+
+**Decisiones de diseño (no ambiguas, criterio de consistencia con
+`menu/Index.vue`, la pantalla CRUD de referencia):**
+- Lista plana (no agrupada — a diferencia de Menú por categoría, Mesas no
+  tiene una dimensión de agrupación natural), con `Editar` (diálogo,
+  mismo patrón `useForm`) y badge de `status` de solo lectura (Libre/
+  Ocupada/Por cobrar, mismas etiquetas que `mesas/Index.vue`) para que el
+  admin entienda por qué una mesa no se puede eliminar.
+- `Eliminar` sí lleva diálogo de confirmación (a diferencia de alternar
+  disponibilidad en Menú, que no lo necesita por ser reversible) — es
+  destructivo e irreversible desde esta pantalla aunque el modelo use soft
+  delete.
+- Botón `Eliminar` deshabilitado cuando `table.status === 'ocupada'`: se
+  verificó la correlación real en las Actions de `Order`
+  (`OpenOrReuseOrderForTableAction` pone `ocupada` para las órdenes
+  `abierta`/`enviada_cocina`, exactamente las que bloquea
+  `DeleteTableAction`; `RequestBillAction` mueve a `por_cobrar` cuando la
+  orden ya no está en esos dos estados) — deshabilitar en `ocupada` evita
+  el caso común del error 422 sin tocar `por_cobrar`, que sí es eliminable.
+- Nav: se agregó "Gestión de Mesas" a `AppSidebar.vue` (icono `Table2`),
+  visible solo para `admin`, junto a "Menú".
+
+**Trap encontrado, no corregido (fuera de alcance — backend ya
+"completo" por instrucción de la sesión):** `TableController::destroy`
+usa `abort(422, $exception->getMessage())` para "mesa con cuenta activa",
+igual que `StaffController` y `ReservationController`. Es el mismo patrón
+que el comentario de `OrderController::addItem` (líneas 77-84) ya señala
+como problemático: un `abort()` plano no trae el header `X-Inertia`, así
+que el cliente Inertia lo trata como respuesta no-Inertia y muestra un
+modal con HTML crudo en vez del mensaje del spec — `ValidationException`
+sí viaja por el mecanismo que Inertia espera. Mitigado en esta pantalla
+deshabilitando el botón en el caso común (ver arriba) más un mensaje de
+respaldo genérico en el `onError` del `router.delete` para el residual.
+**Sin corregir en el backend por instrucción explícita de "sesión
+solo-Vue, backend ya existe completo".** Relevante para las próximas
+sesiones de Gestión de Staff y Reservas: mismo patrón `abort(422, …)` sin
+corregir ahí tampoco — si se prioriza, cambiar los tres controllers a
+`ValidationException::withMessages(...)` en un pase de backend dedicado
+sería más consistente que seguir mitigando por pantalla.
+
+**Verificado con:** `php artisan test --compact --filter=GestionMesas`
+(8/8, sin cambios — backend intacto), `npm run lint:check`, `npm run
+types:check`, y **click-through completo en browser real** (sandbox
+preview del harness, no la extensión de Chrome — `claude-in-chrome` no
+estaba conectada en esta sesión y no reconectó tras reintentar; el
+preview sí alcanzó `demo.localhost:8000` esta vez, a diferencia de lo
+asumido en `browser-verification-setup` de memoria) con `admin.qa@demo.test`
+(cuenta de prueba reutilizada de la sesión de Gestión de Menú, password
+reseteada a `password`): crear "Mesa Terraza 5" (aparece con `Libre`),
+editar su capacidad (4→7 refleja en la lista), eliminarla con el diálogo
+de confirmación (desaparece de la lista), y confirmar que "Eliminar" no
+responde al clic en una mesa `Ocupada` (Mesa 1). Sin errores en consola.
+Con esta pantalla son 6 de 10 Must del inventario con Stack ✅.
