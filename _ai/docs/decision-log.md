@@ -272,3 +272,56 @@ Documentado en el modelo y la migración.
 **Verificado con:** `tests/Unit/Actions/Reservations/CreateReservationActionTest.php`,
 `tests/Feature/ReservasTest.php`, y la suite completa (`php artisan test
 --compact`, 152 passed / 4 skipped).
+
+### 2026-08-12 — Fase 03: se abandona Stitch, primera pantalla Vue (Mapa de Mesas)
+**Estado:** 🟢 Resuelta — implementada, ver `_ai/design/screen-inventory.md`
+**Contexto:** al retomar Fase 03 (ver `_ai/CONTEXT.md`, nota de cierre de
+los 8 specs backend), `generate_screen_from_text` de Stitch seguía sin
+conexión (confirmado por el usuario directamente, sin reintento exitoso
+desde el fallo del 2026-08-10).
+**Decisión:** abandonar Stitch como mecanismo de generación de código de
+pantallas — el proyecto y su design system (`assets/4d55f3c4dae2452583b02110c6f66fcf`)
+se conservan como referencia de tokens, pero las pantallas se construyen
+directo en Vue 3 + Tailwind v4 + los componentes reka-ui ya instalados del
+starter kit. Los tokens (colores, Work Sans, JetBrains Mono, radios,
+colores de estado libre/ocupada/por_cobrar) se tradujeron a mano a
+`resources/css/app.css` y `vite.config.ts` (fuentes vía `bunny()`) —
+aplican a **toda la app**, no solo a esta pantalla, porque son tokens CSS
+globales.
+**Primera pantalla construida:** Mapa de Mesas (`resources/js/pages/mesas/Index.vue`),
+elegida por ser el punto de entrada real de mesero/admin y la más simple
+(solo lectura, sin formularios) para validar el patrón antes de pantallas
+con más interacción.
+**Efectos colaterales necesarios para llegar a esta pantalla:**
+- `php artisan wayfinder:generate` no se había corrido desde que se
+  implementaron los backends de #1-#8 — ningún `resources/js/routes/*`
+  ni `resources/js/actions/*` existía para esas rutas. Regenerado con
+  `--with-form` (el flag por defecto de `vite.config.ts`, `formVariants: true`)
+  — la primera corrida sin ese flag rompió `.form()` en 6 páginas
+  preexistentes del starter kit (auth/settings), detectado por
+  `npm run types:check`.
+- `php artisan migrate` no se había corrido contra la SQLite de desarrollo
+  desde que se crearon `payments`/`reservations` (#7/#8) — solo existían
+  en el entorno de test (`RefreshDatabase`). Sin esto, cualquier verificación
+  manual en browser habría fallado con "no such table".
+- `APP_NAME` seguía en "Laravel" (default del starter kit) — cambiado a
+  "Restaurante OS" en `.env` y `.env.example`; requirió
+  `php artisan config:clear` para que surtiera efecto (estaba cacheado).
+- El sidebar (`AppSidebar.vue`) apuntaba a un "Dashboard" genérico del
+  starter kit sin ningún nav item hacia el dominio de restaurante, más
+  links de "Repository"/"Documentation" irrelevantes — cambiado a un nav
+  "Mesas" y se quitó el footer nav; sin esto la pantalla no era alcanzable
+  desde la UI después del login.
+**Verificado con:** browser real (login con cuenta admin de un tenant de
+prueba), `npm run lint:check`, `npm run types:check`, y verificación visual
+manual en light y dark mode — happy path completo (mesa libre/ocupada →
+pedido, mesa por_cobrar → cobro), estado vacío con CTA solo-admin.
+**Hallazgo abierto, no resuelto en esta sesión:** la consola del navegador
+muestra "Hydration completed but contains mismatches" y un error no
+capturado ("Cannot read properties of undefined (reading 'createProvider')")
+en **toda la app**, incluyendo `/dashboard` (página del starter kit sin
+tocar) — confirmado que no lo introdujo esta pantalla. Sospecha: conflicto
+entre el script inline de `app.blade.php` que aplica la clase `dark` antes
+de montar Vue, y el manejo reactivo de tema de `useAppearance`/reka-ui. Sin
+investigar a fondo — queda como deuda técnica para la próxima sesión de
+frontend.

@@ -10,15 +10,20 @@ terracota #C2622B, Work Sans + JetBrains Mono, paleta semántica de estado
 para tablet landscape. Generado y refinado en Stitch a partir del brief de
 `_ai/CONTEXT.md` + esta tabla.
 
-**Estado (2026-08-10):** generación de pantallas fallando del lado del servicio
-(timeouts + "invalid argument" en `generate_screen_from_text`, 3 intentos). El
-design system sí quedó guardado. Ninguna de las 13 pantallas de abajo tiene código
-generado todavía — retomar antes de Implementation.
+**Estado (2026-08-12):** Stitch abandonado para generación de pantallas — al
+retomar Fase 03, se confirmó que seguía sin conexión (sin reintento exitoso
+desde el fallo del 2026-08-10). Decisión: construir directo en Vue +
+Tailwind v4 + reka-ui, traduciendo a mano los tokens del design-md ya
+guardado (`assets/4d55f3c4dae2452583b02110c6f66fcf`) a
+`resources/css/app.css` (colores, Work Sans, JetBrains Mono, radios) — ver
+`decision-log.md`. El design system en sí sigue siendo la referencia de
+tokens, solo se abandonó `generate_screen_from_text` como mecanismo de
+generación de código.
 
 | # | Pantalla | Ruta/Path | Descripción | Persona | Prioridad | Stitch | Stack | Figma |
 |---|----------|-----------|-------------|---------|-----------|--------|-------|-------|
 | 1 | Login | `/login` | Autenticación por rol (admin/mesero/cocina). Sin fricción — el diferenciador del producto empieza aquí. | Todas | Must | ⬜ | ⬜ | ⬜ |
-| 2 | Mapa de mesas | `/mesas` | Vista de todas las mesas y su estado (libre/ocupada/por cobrar). Punto de entrada del mesero. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
+| 2 | Mapa de mesas | `/mesas` | Vista de todas las mesas y su estado (libre/ocupada/por cobrar). Punto de entrada del mesero. | Ancla, Independiente | Must | ⬜ (abandonado) | ✅ | ⬜ |
 | 3 | Toma de pedido | `/mesas/{id}/pedido` | Agregar ítems del menú a la cuenta de una mesa. Debe ser operable sin entrenamiento previo. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 4 | Cocina (KDS) | `/cocina` | Lista de pedidos entrantes en tiempo real, con acción de marcar ítem/orden como listo. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 5 | Cobro / cierre de cuenta | `/mesas/{id}/cobro` | Aplica pago a la cuenta de una mesa y la libera. Un solo método de pago en v1. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |

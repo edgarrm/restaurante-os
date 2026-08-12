@@ -8,3 +8,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | database/factories/UserFactory.php | .ai/rules/factories.md |
 | tests/Feature/** | .ai/rules/feature.md |
 | {package.json,package-lock.json,.npmrc,composer.json,composer.lock,.github/**} | .ai/rules/general.md |
+| resources/js/** | .ai/rules/js.md |
+| database/migrations/** | .ai/rules/migrations.md |

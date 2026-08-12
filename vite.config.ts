@@ -15,6 +15,16 @@ export default defineConfig({
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),
+                // Design system de restaurante-os (ver
+                // _ai/design/screen-inventory.md — Stitch, tokens en
+                // resources/css/app.css): Work Sans es la tipografía de
+                // texto/headers, JetBrains Mono para tickets/mesas/montos.
+                bunny('Work Sans', {
+                    weights: [400, 500, 600, 700],
+                }),
+                bunny('JetBrains Mono', {
+                    weights: [400, 500],
+                }),
             ],
         }),
         inertia(),

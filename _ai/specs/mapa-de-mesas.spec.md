@@ -82,29 +82,47 @@ siguiente ciclo silenciosamente (ver Performance Requirements).
       usuario del restaurante A devuelve exclusivamente las mesas de A
 
 ### E2E Tests
-- [ ] Happy path: admin crea una mesa → mesero la ve en `/mesas` con estado
-      `libre` → mesero la toca → llega a `/mesas/{id}/pedido` — **pendiente**:
-      requiere la pantalla Vue de `/mesas` (incluyendo el `poll()` de 3-5s),
-      fuera de alcance de esta sesión (backend only, mismo criterio que
-      #1/#2/#3). El backend (controller, ruta, middleware) ya está cubierto
-      por Integration tests.
-- [ ] Una mesa marcada `por_cobrar` navega a `/mesas/{id}/cobro` al tocarla —
-      mismo motivo, pendiente de la pantalla Vue.
+- [x] Happy path: admin crea una mesa → mesero la ve en `/mesas` con estado
+      `libre` → mesero la toca → llega a `/mesas/{id}/pedido` — verificado
+      manualmente en browser (2026-08-12, ver nota de Fase 03 abajo): mesa
+      `libre`/`ocupada` navega a `pedido.show`, confirmado leyendo los
+      `href` resueltos de cada tarjeta.
+- [x] Una mesa marcada `por_cobrar` navega a `/mesas/{id}/cobro` al tocarla —
+      verificado igual que el caso anterior.
 
-> Nota de implementación: se creó `TableMapController` (nuevo, `GET /mesas`)
-> en vez de reutilizar `TableController` — son responsabilidades distintas:
-> `TableController` es el CRUD exclusivo de admin en `/mesas/gestion`
-> (con `TablePolicy`), mientras que este es solo-lectura para mesero+admin
-> y no tiene Policy (el spec no define reglas de autorización propias). El
-> name group de rutas es `mesas.` (no `tables.`) para no colisionar con
-> `tables.index`.
+> Nota de implementación (#4, backend): se creó `TableMapController` (nuevo,
+> `GET /mesas`) en vez de reutilizar `TableController` — son
+> responsabilidades distintas: `TableController` es el CRUD exclusivo de
+> admin en `/mesas/gestion` (con `TablePolicy`), mientras que este es
+> solo-lectura para mesero+admin y no tiene Policy (el spec no define
+> reglas de autorización propias). El name group de rutas es `mesas.` (no
+> `tables.`) para no colisionar con `tables.index`.
+
+> **Nota de Fase 03 (pantalla Vue, 2026-08-12):** implementada en
+> `resources/js/pages/mesas/Index.vue` — grid de mesas coloreado por status
+> (verde=libre, ámbar=ocupada, terracota=por_cobrar, ver design system),
+> `usePoll(4000)`, estado vacío con CTA a Gestión de Mesas solo para admin.
+> Stitch se abandonó para esta pantalla (ver `decision-log.md`) — los
+> tokens del design system se tradujeron a mano a
+> `resources/css/app.css`. Verificado visualmente en browser (login real,
+> light y dark mode, estado vacío, navegación por status) — no es un test
+> automatizado E2E (Playwright/Dusk), es verificación manual como pide el
+> criterio de esta fase.
+>
+> **Hallazgo no resuelto en esta sesión:** la consola del navegador muestra
+> "Hydration completed but contains mismatches" y un error no capturado
+> ("Cannot read properties of undefined (reading 'createProvider')") en
+> `/mesas` — pero también en `/dashboard` (página del starter kit sin
+> tocar), confirmando que es un problema preexistente de toda la app, no
+> de esta pantalla. Fuera de alcance de esta sesión; queda pendiente de
+> investigar en `decision-log.md`.
 
 ## Definition of Done
 - [x] Todos los test cases de Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
 - [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en tablet real
-- [x] Sin errores en consola / logs
-- [ ] Poll dentro de 500ms p95 — pendiente de medir junto con la pantalla Vue
-- [ ] Pantalla Vue de `/mesas` (E2E, incluye `poll()`) — pendiente, ver nota
-      arriba
+- [ ] Sin errores en consola / logs — ver "Hallazgo no resuelto" arriba,
+      preexistente en toda la app, no introducido por esta pantalla
+- [ ] Poll dentro de 500ms p95 — pendiente de medir
+- [x] Pantalla Vue de `/mesas` (E2E, incluye `poll()`)
