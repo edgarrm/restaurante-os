@@ -130,20 +130,33 @@ tests Pest) en los 9. F-01 a F-06 del threat model están 🟢 Resueltos;
 quedan abiertos F-07 (bloqueo de tablet, decisión de producto pendiente del
 cliente ancla) y F-08/F-09/F-10 (bajos, no bloqueantes).
 
-**Pantallas Vue construidas (7 de 10 Must del inventario,
-`_ai/design/screen-inventory.md`):** Mapa de Mesas, Toma de Pedido, Cocina
-(KDS), Cobro/Cierre de Cuenta, Gestión de Menú, Gestión de Mesas, Gestión
-de Staff — el loop operativo mesero→cocina→cobro es navegable end-to-end en
-browser real (`decision-log.md`, entradas del 2026-08-12 con verificación
-manual). Gestión de Mesas tiene click-through completo (crear, editar,
-eliminar permitido/bloqueado). Gestión de Staff: lint + types + build
-pasan; tests Pest 12/12; verificación visual en browser pendiente (ver
-`decision-log.md`, entrada del 2026-08-12 "Pantalla Vue de Gestión de Staff").
+**Pantallas Vue construidas (8 de 10 Must del inventario,
+`_ai/design/screen-inventory.md`):** Login, Mapa de Mesas, Toma de Pedido,
+Cocina (KDS), Cobro/Cierre de Cuenta, Gestión de Menú, Gestión de Mesas,
+Gestión de Staff — el loop operativo mesero→cocina→cobro es navegable
+end-to-end en browser real (`decision-log.md`, entradas del 2026-08-12 con
+verificación manual). Gestión de Menú tiene verificación de render
+confirmada por captura, pero el click-through de crear/editar/alternar
+disponibilidad con eventos de mouse reales quedó incompleto — la extensión
+de Chrome se desconectó a media verificación (ver `decision-log.md`,
+entrada del 2026-08-12 "Pantalla Vue de Gestión de Menú"). Gestión de
+Mesas tiene click-through completo (crear, editar, eliminar
+permitido/bloqueado). Gestión de Staff: lint + types + build pasan; tests
+Pest 12/12; verificación visual en browser pendiente (ver
+`decision-log.md`, entrada del 2026-08-12 "Pantalla Vue de Gestión de
+Staff"). Login: verificado por lint/types/tests y un login real vía
+HTTP/curl (sin browser real disponible en esa sesión).
+
+**2026-08-12 — Login (#1):** `resources/js/pages/auth/Login.vue` traducido
+a español y su layout (`AuthLayout.vue`) cambiado de
+`AuthSimpleLayout` a `AuthCardLayout` (ambos ya existían en el starter
+kit) para el look boxed/Card consistente con Cocina/Cobro/Pedido — afecta
+visualmente a Register/ForgotPassword/etc. (comparten el mismo layout)
+pero no se tradujo ni se tocó su lógica, fuera de alcance de este spec.
+Ver `decision-log.md` para el detalle de alcance y verificación.
 
 **Pantallas Vue Must todavía pendientes** (columna Stack de
-`screen-inventory.md` sigue ⬜): Login (usa la vista de Fortify del starter
-kit sin confirmar si cuenta como "lista" para este inventario), Gestión de
-Calendario de reservas, Nueva reserva.
+`screen-inventory.md` sigue ⬜): Calendario de reservas, Nueva reserva.
 
 **Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
 app (consola: "Hydration completed but contains mismatches" / error
