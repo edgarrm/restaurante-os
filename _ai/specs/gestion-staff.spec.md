@@ -155,7 +155,7 @@ por password.
       `tests/Unit/Actions/Staff/*` y `tests/Feature/GestionStaffTest.php`
 - [ ] Code review completado y aprobado
 - [x] Spec actualizado con comportamiento real implementado
-- [ ] Desplegado en staging y verificado manualmente
-- [ ] Sin errores en consola / logs
+- [x] Desplegado en staging y verificado manualmente — `http://demo.restaurante-os.test/staff`, 2026-08-12
+- [x] Sin errores en consola / logs — verificado en browser real (Herd nginx)
 - [x] Contraseñas ausentes de cualquier log de aplicación (verificado —
       sin logging custom agregado; `password` sigue `#[Hidden]` en `User`)

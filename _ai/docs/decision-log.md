@@ -549,8 +549,9 @@ de afirmar que algo está completo).
 **Plomería de worktree — no ambigua, documentada aquí:**
 El worktree en `/Users/edgarrealmorales/orca/workspaces/restaurante-os/gestion-staff` no tiene `vendor` ni `.env` (gitignoreados, existen solo en `/Users/edgarrealmorales/Herd/restaurante-os`). Los archivos de Wayfinder (`resources/js/routes/*`, `actions/*`, `wayfinder/*`) también están gitignoreados y no existían en el worktree. Solución: symlinks `vendor` → main y `.env` → main, más copiar los directorios gitignoreados del main al worktree. El build además requiere PHP 8.5 en PATH (`/tmp/php85-bin/php` → `php85`) porque el plugin Wayfinder de Vite corre `php artisan` al compilar y el `php` del PATH del shell es 8.1.
 
-**Verificado con:** `npm run lint:check` (0 errores), `npm run types:check` (0 errores), `npm run build` (✓ 3254 modules, build exitoso con PHP 8.5 en PATH), tests Pest 12/12 (`php artisan test --compact --filter=GestionStaff`, corrido desde `/Users/edgarrealmorales/Herd/restaurante-os`).
-**No verificado — bloqueado por herramienta:** verificación visual en browser real. Las herramientas `mcp__claude-in-chrome__*` y `mcp__Claude_Browser__*` no estaban disponibles en esta sesión. Pendiente para la próxima sesión de frontend: verificar render de lista, crear cuenta, editar rol y desactivar.
+**Verificado con:** `npm run lint:check` (0 errores), `npm run types:check` (0 errores), `npm run build` (✓ 3254 modules), tests Pest 12/12, y verificación visual manual en browser real (`http://demo.restaurante-os.test/staff`, login con `admin.qa@demo.test / password`): lista renderiza, diálogo "Nueva cuenta" abre con campos correctos, "Editar rol" muestra select mesero/cocina, "Desactivar" muestra diálogo de confirmación. ✅ Spec cerrado.
+
+**Fix adicional descubierto al verificar con Herd nginx:** `asset_helper_tenancy => true` en `config/tenancy.php` hacía que `@vite` generara URLs `/tenancy/assets/build/assets/...` → 404. Este proyecto no tiene assets por tenant; cambiado a `false`. Aplica a toda la app — las sesiones anteriores no lo detectaron porque usaban `composer run dev` (dev server de Vite, no pasa por el asset helper de tenancy).
 
 ### 2026-08-12 — Pantalla Vue de Gestión de Menú (#2)
 
