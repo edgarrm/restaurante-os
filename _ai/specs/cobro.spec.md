@@ -1,7 +1,7 @@
 # Feature: Cobro y Cierre de Cuenta
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Story: US-3.1 "Como mesero, quiero cobrar la cuenta de una mesa, para
@@ -83,25 +83,52 @@ mesa vuelve a `status=libre`.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `CloseOrderAction`: monto igual al total → crea `Payment`, orden pasa a
+- [x] `CloseOrderAction`: monto igual al total → crea `Payment`, orden pasa a
       `pagada`, mesa pasa a `libre`
-- [ ] `CloseOrderAction`: monto menor al total → lanza excepción de dominio
-- [ ] `CloseOrderAction`: monto mayor al total → acepta, registra el monto real
-- [ ] `CloseOrderAction`: orden ya `pagada` → no crea un segundo `Payment`
+- [x] `CloseOrderAction`: monto menor al total → lanza excepción de dominio
+- [x] `CloseOrderAction`: monto mayor al total → acepta, registra el monto real
+- [x] `CloseOrderAction`: orden ya `pagada` → no crea un segundo `Payment`
       (idempotente)
-- [ ] **F-03**: el `Payment` creado tiene `collected_by` igual al usuario
+- [x] **F-03**: el `Payment` creado tiene `collected_by` igual al usuario
       autenticado
-- [ ] **F-03**: un `collected_by` enviado en el request es ignorado — se usa
-      siempre el usuario autenticado del servidor
+- [x] **F-03**: un `collected_by` enviado en el request es ignorado — se usa
+      siempre el usuario autenticado del servidor (movido a Integration Tests:
+      la Action solo acepta un `User $collectedBy` tipado, no un array del
+      request, así que "ignorar un valor spoofed" solo es observable en el
+      controller — ver `tests/Feature/CobroTest.php`)
+- [x] `RequestBillAction` (no estaba en el spec original — ver PASO 0b en
+      decision-log.md): marca `Order`+`Table` como `por_cobrar` desde
+      `abierta`/`enviada_cocina`/`lista`; idempotente si ya está `por_cobrar`;
+      no reabre una orden ya `pagada`
 
 ### Integration Tests
-- [ ] `GET /mesas/{table}/cobro` devuelve el detalle de la orden abierta
-- [ ] `POST /mesas/{table}/cobro` con monto suficiente → 200, orden `pagada`,
+- [x] `GET /mesas/{table}/cobro` devuelve el detalle de la orden abierta
+- [x] `POST /mesas/{table}/cobro` con monto suficiente → 200, orden `pagada`,
       mesa `libre`
-- [ ] `POST /mesas/{table}/cobro` con monto insuficiente → 422
-- [ ] `POST /mesas/{table}/cobro` sobre una orden ya `pagada` → 200 idempotente,
+- [x] `POST /mesas/{table}/cobro` con monto insuficiente → 422
+- [x] `POST /mesas/{table}/cobro` sobre una orden ya `pagada` → 200 idempotente,
       sin nuevo `Payment`
-- [ ] Usuario con `role=cocina` accede a `/mesas/{table}/cobro` → 403
+- [x] Usuario con `role=cocina` accede a `/mesas/{table}/cobro` → 403
+- [x] **F-03**: un `collected_by` enviado en el body del POST es ignorado
+- [x] **F-05**: mesero del restaurante A pide la mesa de otro restaurante → 404
+
+> **Notas de implementación (PASO 0, ver `decision-log.md`, 2026-08-12):**
+> - Estados de `Order` elegibles para `/mesas/{table}/cobro`: `abierta`,
+>   `enviada_cocina`, `lista` y `por_cobrar` (GET); los mismos más `pagada`
+>   para el POST, de forma que un doble tap sobre una cuenta ya cerrada
+>   encuentre la misma orden en vez de 404.
+> - `GET /mesas/{table}/cobro` marca la orden y la mesa como `por_cobrar`
+>   como efecto colateral (`RequestBillAction`) — no existe un endpoint
+>   dedicado de "pedir la cuenta"; abrir la pantalla de cobro ya dispara la
+>   transición, igual que `OpenOrReuseOrderForTableAction` en
+>   `GET /mesas/{table}/pedido`. No estaba en el alcance original del spec
+>   ni en sus Test Cases — se agregó a petición explícita en PASO 0b.
+> - `method` acepta `efectivo`, `tarjeta`, `transferencia` (`PaymentMethod`
+>   enum) — conjunto cerrado decidido en PASO 0c, el spec original no lo
+>   enumeraba.
+> - El "200" original de este documento para el POST ya coincidía con el
+>   contrato (`x-inertia-component: Mesas/Index`) — implementado como
+>   redirect 302 a `mesas.index`, mismo patrón PRG que #5/#6.
 
 ### E2E Tests
 - [ ] Happy path completo: orden con ítems → cobrar el total exacto → mesa
@@ -110,10 +137,13 @@ mesa vuelve a `status=libre`.
       la mesa NO cambia de estado
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente
-- [ ] Sin errores en consola / logs
-- [ ] Cobro dentro de 500ms p95
-- [ ] Monto no aparece en logs de texto plano fuera de la tabla `payments`
+- [x] Sin errores en consola / logs
+- [ ] Cobro dentro de 500ms p95 — pendiente de medir junto con la pantalla Vue
+- [x] Monto no aparece en logs de texto plano fuera de la tabla `payments`
+      (nunca se loggea explícitamente)
+- [ ] Pantalla Vue de `/cobro` (E2E) — pendiente, fuera de alcance de esta
+      sesión (backend only, mismo criterio que #1-#6)

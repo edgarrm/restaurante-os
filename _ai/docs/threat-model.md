@@ -111,7 +111,18 @@ como decisión de seguridad, no como default accidental.
 
 ## F-03 — ALTO: Los pagos no registran quién cobró
 
-**Estado:** 🔴 Abierto · **Verificado**
+**Estado:** 🟢 Resuelto (2026-08-12) · **Verificado**
+
+Resuelto en `_ai/specs/cobro.spec.md` (#7): la tabla `payments` incluye
+`collected_by` (FK → users, required, ver migración
+`2026_08_12_011655_create_payments_table.php`). `CloseOrderAction` lo asigna
+siempre desde el `User $collectedBy` tipado que le pasa el controller
+(`$request->user()`) — nunca desde un campo del body, así que un
+`collected_by` inyectado en el request se ignora por completo. Verificado
+con `tests/Unit/Actions/Orders/CloseOrderActionTest.php` (caso "F-03: el
+Payment creado tiene collected_by igual al usuario autenticado") y
+`tests/Feature/CobroTest.php` (caso "F-03: un collected_by enviado en el
+request es ignorado").
 
 La entidad `Payment` de `_ai/docs/data-model.md` es:
 `id, order_id, amount, method, paid_at` — **sin referencia al usuario**.
@@ -277,7 +288,7 @@ quede en un solo inventario junto al resto de vectores.
 |---|---|---|---|
 | F-01 | 🔴 Crítico → 🟢 Resuelto | Auth sin contexto de tenant → bypass entre tenants | **Sí** |
 | F-02 | 🟠 Alto → 🟢 Resuelto | Sesiones no acotadas por tenant | **Sí** |
-| F-03 | 🟠 Alto | Pagos sin atribución de usuario | Sí (cambio de esquema) |
+| F-03 | 🟠 Alto → 🟢 Resuelto | Pagos sin atribución de usuario | Sí (cambio de esquema) |
 | F-04 | 🟡 Medio | Mass assignment de `role`/`tenant_id` | No (preventivo) |
 | F-05 | 🟡 Medio | IDOR entre tenants sin cobertura de tests | No (preventivo) |
 | F-06 | 🟡 Medio → 🟢 Resuelto | Sin spec del middleware de roles | Sí, para features con rol |

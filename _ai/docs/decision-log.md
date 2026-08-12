@@ -190,3 +190,52 @@ el Happy Path, paso 5.
 **Verificado con:** `tests/Unit/Actions/Orders/MarkOrderItemReadyActionTest.php`,
 `tests/Feature/CocinaKdsTest.php`, y la suite completa (`php artisan test
 --compact`, 125 passed / 4 skipped).
+
+### 2026-08-12 — PASO 0 de `cobro.spec.md` (#7): estados cobrables, transición a `por_cobrar`, y métodos de pago
+**Estado:** 🟢 Resuelta — implementada en `cobro.spec.md` (#7), 2026-08-12
+**Contexto:** el spec tenía tres ambigüedades/huecos genuinos, cada uno
+confirmado con el usuario antes de escribir el primer test (`AskUserQuestion`
+de esta sesión):
+
+a) **Estados de `Order` "cobrables"**: el único Integration Test dice
+   "`GET /mesas/{table}/cobro` devuelve el detalle de la orden abierta", pero
+   el Edge Case de una orden nunca enviada a cocina siendo cobrable
+   contradice una lectura literal de "abierta" como `status=abierta`.
+   **Decisión:** la orden elegible es la más reciente de la mesa con status
+   en `[abierta, enviada_cocina, lista]` (ampliado después a incluir
+   `por_cobrar` — ver siguiente punto — y `pagada` solo para el POST, por el
+   caso de doble tap idempotente).
+
+b) **¿Construir la transición `Table.status → por_cobrar` en esta sesión?**
+   Verificado que ninguna Action existente la produce, pese a que
+   `toma-de-pedido.spec.md` y `mapa-de-mesas.spec.md` la narran como
+   precondición. El usuario decidió que sí se construyera aquí (a diferencia
+   del criterio por defecto de este proyecto de no construir lo que ningún
+   Test Case pide). **Mecanismo elegido** (segunda pregunta, también
+   confirmada): efecto colateral de `GET /mesas/{table}/cobro`
+   (`RequestBillAction`), sin endpoint dedicado de "pedir la cuenta" — mismo
+   patrón que `OpenOrReuseOrderForTableAction` en `GET /mesas/{table}/pedido`.
+   Efecto práctico: como `GET /cobro` ahora puede dejar la orden en
+   `por_cobrar`, ese status se agregó a los estados elegibles del punto (a)
+   para que reabrir la misma pantalla (o el siguiente poll) siga encontrando
+   la orden en vez de 404.
+
+c) **Valores válidos de `method`**: ni el spec ni `api-contract.yaml` los
+   enumeraban (solo un ejemplo, `"efectivo"`). **Decisión:** conjunto
+   cerrado `efectivo`, `tarjeta`, `transferencia` — nuevo enum
+   `App\Enums\PaymentMethod`, validado con `Rule::enum()` en el controller.
+
+**Bug de plomería descubierto al implementar:** la primera versión de
+`RequestBillAction`/`CloseOrderAction` usaba `$order->table->update([...])`
+para cambiar `Table.status`, que no tuvo ningún efecto — `status` no está en
+`Table::$fillable` (mismo patrón ya usado para `available` en `MenuItem` e
+`is_active`/`role` en `User`), así que `update()` lo descarta en silencio sin
+error. Corregido a `forceFill(['status' => ...])->save()`, igual que
+`OpenOrReuseOrderForTableAction`. Detectado porque los Unit tests fallaban en
+la aserción de `Table::fresh()->status` tras implementar — confirmado con
+`php artisan tinker` antes de aplicar el fix.
+
+**Verificado con:** `tests/Unit/Actions/Orders/CloseOrderActionTest.php`,
+`tests/Unit/Actions/Orders/RequestBillActionTest.php`,
+`tests/Feature/CobroTest.php`, y la suite completa (`php artisan test
+--compact`, 142 passed / 4 skipped).

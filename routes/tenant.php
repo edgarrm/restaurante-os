@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableMapController;
@@ -134,5 +135,19 @@ Route::middleware([
         ->group(function () {
             Route::get('/', [KitchenController::class, 'index'])->name('index');
             Route::patch('items/{orderItem}/listo', [KitchenController::class, 'markReady'])->name('items.mark-ready');
+        });
+
+    // Cobro y Cierre de Cuenta (_ai/specs/cobro.spec.md, #7). Mismo patrón
+    // que Toma de Pedido: `role:admin,mesero` resuelve F-06 para esta
+    // pantalla completa; `Table` sí usa `BelongsToTenant`, así que
+    // `{table}` en la URL usa route model binding normal (a diferencia de
+    // `{orderItem}` en #6) — TenantScope ya protege F-05. Sin Policy — el
+    // spec dice explícitamente que no hay reglas de autorización propias.
+    Route::middleware(['auth', 'role:admin,mesero'])
+        ->prefix('mesas/{table}/cobro')
+        ->name('cobro.')
+        ->group(function () {
+            Route::get('/', [PaymentController::class, 'show'])->name('show');
+            Route::post('/', [PaymentController::class, 'close'])->name('close');
         });
 });

@@ -16,7 +16,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 4 | Mapa de Mesas | `_ai/specs/mapa-de-mesas.spec.md` | ✅ Implemented | ✅ | ✅ | #1 |
 | 5 | Toma de Pedido | `_ai/specs/toma-de-pedido.spec.md` | ✅ Implemented | ✅ | ✅ | #1, #2 |
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
-| 7 | Cobro | `_ai/specs/cobro.spec.md` | 🟡 Draft | ❌ | ❌ | #5 |
+| 7 | Cobro | `_ai/specs/cobro.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 8 | Reservas | `_ai/specs/reservas.spec.md` | 🟡 Draft | ❌ | ❌ | #1 (opcional, `table_id` nullable) |
 
 **#0 es el bloqueador real de todos los demás** — sin un tenant existente, las
@@ -31,7 +31,7 @@ Del threat model del 2026-08-10 (`_ai/docs/threat-model.md`):
 |---|---|---|---|
 | F-01 | 🔴 Crítico | ✅ Resuelto — ver `decision-log.md` y F-01 en `_ai/docs/threat-model.md` | #0 y, por transitividad, todos |
 | F-02 | 🟠 Alto | ✅ Resuelto — `ScopeSessions` en `routes/tenant.php` y `config/fortify.php` | #0 |
-| F-03 | 🟠 Alto | `Payment.collected_by` — ya agregado al data model, falta implementarlo | #7 Cobro |
+| F-03 | 🟠 Alto | ✅ Resuelto — `Payment.collected_by` implementado en `CloseOrderAction`, siempre del usuario autenticado del servidor | #7 Cobro |
 | F-06 | 🟡 Medio | ✅ Resuelto — middleware `role:` (alias en `bootstrap/app.php`) + Policy por modelo, ver ADR-007 y `decision-log.md` | Todos los que restringen por rol |
 
 F-01 y F-02 se resolvieron implementando el spec #0. F-06 se resolvió
