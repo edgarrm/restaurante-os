@@ -18,6 +18,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 7 | Cobro | `_ai/specs/cobro.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 8 | Reservas | `_ai/specs/reservas.spec.md` | ✅ Implemented | ✅ | ✅ | #1 (opcional, `table_id` nullable) |
+| 12 | División de Cuenta (Could) | `_ai/specs/division-de-cuenta.spec.md` | ✅ Implemented | ✅ | ✅ | #7 |
 
 **#0 es el bloqueador real de todos los demás** — sin un tenant existente, las
 rutas de `routes/tenant.php` no son alcanzables (requieren

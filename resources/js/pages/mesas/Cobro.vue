@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { close as closeRoute, show as cobroShow } from '@/routes/cobro';
+import { store as addPaymentRoute } from '@/routes/cobro/pagos';
 import { index as mesasIndex } from '@/routes/mesas';
 import type { Order, OrderStatus, PaymentMethod, Table } from '@/types';
 
@@ -47,6 +48,14 @@ const cuentaLines = computed(() =>
 
 const total = computed(() => cuentaLines.value.reduce((sum, line) => sum + line.subtotal, 0));
 
+// División de Cuenta (_ai/specs/division-de-cuenta.spec.md, US-3.2): la
+// orden puede tener varios `payments` ya registrados (pagos parciales), no
+// solo uno. El saldo pendiente reemplaza al total fijo como lo que falta
+// por cobrar.
+const pagosRegistrados = computed(() => order.payments ?? []);
+const totalPagado = computed(() => pagosRegistrados.value.reduce((sum, payment) => sum + Number(payment.amount), 0));
+const saldoPendiente = computed(() => Math.max(0, total.value - totalPagado.value));
+
 function money(value: number): string {
     return `$${value.toFixed(2)}`;
 }
@@ -68,20 +77,37 @@ const methodOptions: { value: PaymentMethod; label: string }[] = [
     { value: 'transferencia', label: 'Transferencia' },
 ];
 
+const methodLabel = Object.fromEntries(methodOptions.map((option) => [option.value, option.label])) as Record<PaymentMethod, string>;
+
 const method = ref<PaymentMethod>('efectivo');
 
-// Por defecto, el total exacto de la orden (Happy Path #3) — el mesero
-// puede ajustarlo hacia arriba (billete grande, ver Edge Cases) pero no
-// hacia un monto insuficiente, ese caso lo rechaza el servidor.
-const amount = ref(total.value.toFixed(2));
+// Por defecto, el saldo pendiente (no el total fijo) — Happy Path #3 de
+// #7. En una cuenta sin pagos previos, saldo pendiente === total, así que
+// el mesero que paga todo de una vez ve exactamente lo mismo que antes. El
+// mesero puede ajustar el monto hacia arriba (billete grande) o hacia
+// abajo (pago parcial, ver división-de-cuenta.spec.md); solo un monto ≤ 0
+// lo rechaza el servidor.
+const amount = ref(saldoPendiente.value.toFixed(2));
+
+// Tras un pago parcial, Inertia recarga las props de la misma instancia del
+// componente (no remonta) — sin este watch, el campo se quedaba con el
+// monto del pago recién registrado en vez de reflejar el nuevo saldo
+// pendiente (bug encontrado en verificación visual con browser real).
+watch(saldoPendiente, (value) => {
+    amount.value = value.toFixed(2);
+});
+
+// Un monto que cubre el saldo pendiente cierra la cuenta (mismo endpoint
+// `close` de #7); uno menor es un pago parcial (endpoint nuevo, no cierra).
+const isPagoFinal = computed(() => Number(amount.value) >= saldoPendiente.value);
 
 const change = computed(() => {
     const value = Number(amount.value);
 
-    return Number.isFinite(value) && value > total.value ? value - total.value : 0;
+    return Number.isFinite(value) && isPagoFinal.value && value > saldoPendiente.value ? value - saldoPendiente.value : 0;
 });
 
-const canConfirm = computed(() => cuentaLines.value.length > 0 && Number(amount.value) > 0);
+const canConfirm = computed(() => cuentaLines.value.length > 0 && saldoPendiente.value > 0 && Number(amount.value) > 0);
 
 const processing = ref(false);
 
@@ -91,8 +117,13 @@ function confirmPayment() {
     }
 
     processing.value = true;
+    // Pago que cubre el saldo → mismo endpoint `close` de #7, sin cambios
+    // (así el flujo de un solo pago no nota ninguna diferencia). Pago
+    // parcial → endpoint nuevo, que no exige cubrir el total.
+    const url = isPagoFinal.value ? closeRoute.url(table.id) : addPaymentRoute.url(table.id);
+
     router.post(
-        closeRoute.url(table.id),
+        url,
         { amount: amount.value, method: method.value },
         {
             preserveScroll: true,
@@ -159,6 +190,40 @@ function confirmPayment() {
                         <span class="text-sm font-semibold text-foreground">Total</span>
                         <span class="font-mono text-lg font-bold text-foreground">{{ money(total) }}</span>
                     </div>
+
+                    <!-- División de Cuenta (_ai/specs/division-de-cuenta.spec.md):
+                         solo aparece si ya hay pagos parciales registrados,
+                         para no cambiar nada visualmente en el flujo de un
+                         solo pago. -->
+                    <template v-if="pagosRegistrados.length > 0">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground">Pagado</span>
+                            <span class="font-mono text-foreground">{{ money(totalPagado) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-semibold text-foreground">Saldo pendiente</span>
+                            <span class="font-mono text-lg font-bold text-foreground">{{ money(saldoPendiente) }}</span>
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex flex-col gap-2">
+                            <span class="text-sm font-semibold text-foreground">Pagos registrados</span>
+                            <ul class="flex flex-col gap-2">
+                                <li
+                                    v-for="payment in pagosRegistrados"
+                                    :key="payment.id"
+                                    class="flex items-center justify-between gap-2 text-sm"
+                                >
+                                    <div class="flex flex-col">
+                                        <span class="text-foreground">{{ methodLabel[payment.method] }}</span>
+                                        <span class="text-xs text-muted-foreground">{{ payment.collector?.name ?? 'Mesero' }}</span>
+                                    </div>
+                                    <span class="font-mono font-medium text-foreground">{{ money(Number(payment.amount)) }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </template>
                 </CardContent>
             </Card>
 
@@ -185,7 +250,15 @@ function confirmPayment() {
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <Label for="amount">Monto recibido</Label>
+                        <div class="flex items-center justify-between">
+                            <Label for="amount">Monto recibido</Label>
+                            <!-- Solo cuando difiere del total (ya hay pagos
+                                 previos) — en el flujo de un solo pago,
+                                 saldo pendiente === total, no se duplica. -->
+                            <span v-if="pagosRegistrados.length > 0" class="font-mono text-xs text-muted-foreground">
+                                Saldo pendiente: {{ money(saldoPendiente) }}
+                            </span>
+                        </div>
                         <Input id="amount" v-model="amount" type="number" min="0" step="0.01" class="font-mono" />
                     </div>
 
@@ -196,7 +269,11 @@ function confirmPayment() {
 
                     <Button size="lg" :disabled="!canConfirm || processing" @click="confirmPayment">
                         <Spinner v-if="processing" class="size-4" />
-                        {{ processing ? 'Cobrando…' : `Confirmar pago · ${money(total)}` }}
+                        {{
+                            processing
+                                ? 'Cobrando…'
+                                : `${isPagoFinal ? 'Confirmar pago' : 'Registrar pago parcial'} · ${money(Number(amount) || 0)}`
+                        }}
                     </Button>
                 </CardContent>
             </Card>

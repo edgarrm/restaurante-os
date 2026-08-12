@@ -188,3 +188,20 @@ Próximo paso a decidir con el usuario: con las 9 pantallas Must
 construidas, arrancar Should Have (Inventario, sin spec todavía) o Could
 Have (split bill, dashboard del día) — ver `_ai/docs/spec-registry.md`,
 sección "Pendiente de spec".
+
+**2026-08-12 — División de Cuenta (#12 del inventario, US-3.2, Could)
+implementada** (`_ai/specs/division-de-cuenta.spec.md`, branch
+`feature/split-bill`, sin merge todavía): split por monto libre —
+elegido sobre split por ítems vía `AskUserQuestion` (split por ítems
+queda documentado como brecha). No es pantalla nueva, extiende
+`mesas/Cobro.vue` (#5) con saldo pendiente + historial de pagos.
+Arquitectura: `AddPaymentToOrderAction` nueva (nunca rechaza por
+insuficiencia, cierra solo cuando la suma de pagos cubre el total);
+`CloseOrderAction` (#7, Must, en producción) generalizada para comparar
+pagos-ya-registrados + monto vs. total en vez de solo el monto —
+verificado que sus tests y los de `CobroTest.php` siguen en verde sin
+modificarlos. Ruta nueva `POST /mesas/{table}/cobro/pagos`. Bug de
+reactividad encontrado en verificación visual (el campo de monto no se
+actualizaba tras un pago parcial) y corregido — ver nota de
+implementación en el spec. Suite completa: 184 tests, 180 passed, 4
+skipped (preexistentes), 0 fallos.

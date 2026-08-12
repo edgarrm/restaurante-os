@@ -38,7 +38,7 @@ mesa vuelve a `status=libre`.
 ## Edge Cases
 | Escenario | Comportamiento esperado |
 |-----------|------------------------|
-| Monto ingresado menor al total de la orden | Rechazado — 422, no se permite cerrar una cuenta parcialmente pagada en v1 (split bill es Could, fuera de este spec) |
+| Monto ingresado menor al total de la orden, vía **este** endpoint (`POST /mesas/{table}/cobro`) | Rechazado — 422, este endpoint específico sigue exigiendo cubrir el total en una sola llamada. Un pago parcial genuino (split bill) usa el endpoint nuevo de `_ai/specs/division-de-cuenta.spec.md` (#12, implementado 2026-08-12), que no rechaza por insuficiencia — no lo pierdas de vista si tocas este Edge Case. |
 | Monto ingresado mayor al total (el cliente paga con un billete grande) | Aceptado — se registra el `amount` real recibido; el "cambio a dar" es cálculo de UI (`amount - total`), no afecta el modelo de datos |
 | Mesa sin orden activa (ya fue cobrada o nunca se abrió) | 404 o redirect al mapa de mesas con aviso — no se puede cobrar lo que no existe |
 | Orden todavía en `abierta` (nunca se envió a cocina) | Permitido cobrar igualmente — un mesero puede cerrar una cuenta sin pasar por cocina (ej. solo bebidas de barra); no es un estado bloqueante |
@@ -47,7 +47,7 @@ mesa vuelve a `status=libre`.
 ## Error States
 | Error | Mensaje al usuario | Acción de recuperación |
 |-------|-------------------|----------------------|
-| Monto insuficiente | "El monto no cubre el total de la cuenta ($X.XX)." | Corregir el monto o completar con otro método (fuera de alcance v1 — un solo pago por cobro) |
+| Monto insuficiente | "El monto no cubre el total de la cuenta ($X.XX)." | Corregir el monto, o registrar un pago parcial y completar el saldo con otro pago (#12, `_ai/specs/division-de-cuenta.spec.md`) |
 | Orden ya pagada | "Esta cuenta ya fue cobrada." | Redirige al mapa de mesas |
 | Mesa sin orden activa | "No hay una cuenta abierta para esta mesa." | Redirige al mapa de mesas |
 

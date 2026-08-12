@@ -68,4 +68,17 @@ class Order extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    /**
+     * Total de la cuenta: suma de `quantity * unit_price` de sus `items`.
+     * Única fuente de verdad, usada por `CloseOrderAction` y
+     * `AddPaymentToOrderAction` (_ai/specs/division-de-cuenta.spec.md) para
+     * no duplicar el cálculo.
+     */
+    public function total(): float
+    {
+        return (float) $this->items->sum(
+            fn (OrderItem $item): float => $item->quantity * (float) $item->unit_price
+        );
+    }
 }

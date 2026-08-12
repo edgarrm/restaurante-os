@@ -151,6 +151,13 @@ Route::middleware([
         ->group(function () {
             Route::get('/', [PaymentController::class, 'show'])->name('show');
             Route::post('/', [PaymentController::class, 'close'])->name('close');
+
+            // División de Cuenta (_ai/specs/division-de-cuenta.spec.md,
+            // #12, US-3.2): registra un pago que puede ser parcial — a
+            // diferencia de `close`, no exige cubrir el total. Mismo
+            // middleware/grupo, ruta hermana en vez de query param, para no
+            // sobrecargar `close` con dos comportamientos distintos.
+            Route::post('/pagos', [PaymentController::class, 'addPayment'])->name('pagos.store');
         });
 
     // Reservas (_ai/specs/reservas.spec.md, #8). Mismo patrón que
