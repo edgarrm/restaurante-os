@@ -121,6 +121,7 @@ Route::middleware([
         ->group(function () {
             Route::get('/', [OrderController::class, 'show'])->name('show');
             Route::post('/items', [OrderController::class, 'addItem'])->name('add-item');
+            Route::patch('/items/{orderItem}', [OrderController::class, 'updateItem'])->name('update-item');
             Route::post('/enviar', [OrderController::class, 'send'])->name('send');
         });
 

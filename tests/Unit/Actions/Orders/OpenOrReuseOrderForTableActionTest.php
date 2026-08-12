@@ -33,3 +33,14 @@ test('mesa ocupada reutiliza la Order abierta existente', function () {
     expect($order->id)->toBe($existente->id)
         ->and(Order::count())->toBe(1);
 });
+
+test('mesa ocupada con orden enviada_cocina reutiliza esa orden (bug: recargar /pedido tras enviar a cocina daba 404)', function (OrderStatus $status) {
+    $table = Table::factory()->create(['status' => TableStatus::Ocupada]);
+    $mesero = User::factory()->create();
+    $existente = Order::factory()->for($table)->create(['opened_by' => $mesero->id, 'status' => $status]);
+
+    $order = (new OpenOrReuseOrderForTableAction)->handle($table, $mesero);
+
+    expect($order->id)->toBe($existente->id)
+        ->and(Order::count())->toBe(1);
+})->with([OrderStatus::EnviadaCocina, OrderStatus::Lista]);

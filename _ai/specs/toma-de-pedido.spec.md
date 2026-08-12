@@ -136,36 +136,77 @@ orden pasa a status `enviada_cocina`.
 > endpoints ("redirect Inertia a la misma página"). Los tests verifican
 > `assertRedirect()` + el estado del modelo en BD.
 >
-> **Brecha de alcance decidida en PASO 0 (ver `decision-log.md`,
-> 2026-08-11):** Happy Path y Edge Cases de este documento narran un
-> stepper que ajusta/quita cantidades de un `OrderItem` ya agregado
-> (incluyendo "cantidad ajustada a 0 → el renglón se elimina"), pero ni
-> `api-contract.yaml` ni los Integration Tests de arriba definen un
-> endpoint para editarlo/eliminarlo — solo agregar (con incremento) existe.
-> Se dejó **fuera de alcance de esta sesión**, documentado aquí en vez de
-> construir un endpoint no pedido por ningún test case; es trabajo
-> pendiente para cuando se implemente la pantalla Vue de
-> `/mesas/{table}/pedido`.
+> **Brecha de alcance decidida en PASO 0 de 2026-08-11 (ver `decision-log.md`)
+> — cerrada en PASO 0 de 2026-08-12 (pantalla Vue):** Happy Path y Edge
+> Cases de este documento narran un stepper que ajusta/quita cantidades de
+> un `OrderItem` ya agregado (incluyendo "cantidad ajustada a 0 → el
+> renglón se elimina"). En la sesión de 2026-08-11 se dejó fuera de
+> alcance porque ningún Integration Test lo pedía. Al construir la
+> pantalla Vue (2026-08-12), el usuario decidió ampliar el alcance
+> (mismo criterio que `por_cobrar` en #7) en vez de lanzar sin stepper:
+> ahora existe `PATCH /mesas/{table}/pedido/items/{orderItem}`
+> (`UpdateOrderItemQuantityAction`), con los Integration Tests
+> correspondientes abajo. Solo editable mientras la orden sigue `abierta`
+> — ver `OrderNotEditableException`.
+
+- [x] `PATCH /mesas/{table}/pedido/items/{orderItem}` ajusta la cantidad de
+      un `OrderItem`
+- [x] `PATCH .../items/{orderItem}` con `quantity=0` elimina el renglón
+- [x] `PATCH .../items/{orderItem}` sobre una orden que ya no está `abierta`
+      (p. ej. `enviada_cocina`) devuelve 422
+- [x] **F-05**: ajustar un `OrderItem` de una mesa de otro restaurante → 404
+- [x] Mesero visita `/mesas/{mesa_por_cobrar}/pedido` → redirige a
+      `/mesas/{table}/cobro` con un aviso (Edge Case documentado arriba;
+      hueco encontrado construyendo la pantalla Vue — antes de esto, la
+      única ruta existente devolvía 404 en ese caso)
+
+> **Bug de plomería encontrado construyendo la pantalla Vue (2026-08-12):**
+> `OpenOrReuseOrderForTableAction` solo reutilizaba órdenes en `abierta`
+> para una mesa `ocupada`. Recargar `GET /mesas/{table}/pedido` después de
+> "Enviar a Cocina" (orden ya en `enviada_cocina`) devolvía 404 — nunca se
+> detectó antes porque los Integration Tests de `enviar` solo hacían
+> `assertRedirect()` sin seguir el redirect. Corregido ampliando el query a
+> `[abierta, enviada_cocina, lista]`, mismo criterio de estados "activos"
+> que `RequestBillAction` (#7).
+>
+> **Cambio de arquitectura descubierto en la misma sesión:** los 422 de
+> dominio (`abort(422, $mensaje)`) de `addItem`/`send` nunca se probaron
+> contra una petición Inertia real (solo contra `postJson()`, que fuerza
+> `Accept: application/json`). Contra el cliente Inertia real (`Accept:
+> text/html`), un `abort(422, ...)` no trae el header `X-Inertia`, así que
+> Inertia lo trata como respuesta "no-Inertia" y muestra un modal con el
+> HTML crudo de error en vez del mensaje del spec — confirmado con un test
+> exploratorio antes de decidir el fix. Los tres 422 de dominio de este
+> flujo (`addItem`, `send`, `updateItem`) ahora se lanzan como
+> `ValidationException::withMessages([...])`, que sí viaja por el redirect
+> 302 + errores flasheados que Inertia espera (ver `.ai/rules/feature.md`).
+> Los dos Integration Tests existentes que verificaban `json('message')` se
+> actualizaron a `json('errors.<campo>.0')`.
 
 ### E2E Tests
-- [ ] Happy path completo desde UI: abrir mesa libre → agregar 2 platillos →
-      ajustar cantidad de uno → enviar a cocina → los ítems aparecen en `/cocina`
-- [ ] Error crítico desde UI: intentar agregar un ítem que se desactivó
-      (`available=false`) después de cargar la pantalla → mensaje correcto, la
-      orden no queda en estado inconsistente
+- [x] Happy path completo desde UI: abrir mesa libre → agregar 2 platillos
+      (incrementando uno) → ajustar cantidad con el stepper (incluyendo
+      bajar a 0 para quitar un renglón) → enviar a cocina → la orden queda
+      `enviada_cocina` y la pantalla se puede seguir usando (verificado en
+      browser real, `demo.localhost:8000`, light y dark mode)
+- [x] Error crítico desde UI: intentar agregar un ítem que se desactivó
+      (`available=false`) después de cargar la pantalla → mensaje correcto
+      en un banner (no un modal de error crudo), el menú se refresca
+      automáticamente (el ítem queda deshabilitado), la orden no queda en
+      estado inconsistente (verificado en browser real)
 
 ## Definition of Done
 - [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
 - [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en un dispositivo tablet real
-- [x] Sin errores en consola / logs
+- [x] Sin errores en consola / logs propios de esta pantalla (persiste el
+      hallazgo de hidratación pre-existente de toda la app, ver
+      `decision-log.md`, Fase 03 — no introducido aquí)
 - [ ] Agregar ítem y enviar a cocina dentro de 500ms p95 — pendiente de medir
-      junto con la pantalla Vue
 - [x] Sin lógica de negocio en el controller — vive en `AddItemToOrderAction` /
-      `SendOrderToKitchenAction` / `OpenOrReuseOrderForTableAction` (ver
-      ADR-004)
-- [ ] Pantalla Vue de `/mesas/{table}/pedido` (E2E) — pendiente, fuera de
-      alcance de esta sesión (backend only, mismo criterio que #1/#2/#3/#4);
-      incluye el endpoint de editar/quitar `OrderItem` documentado como
-      brecha arriba
+      `SendOrderToKitchenAction` / `OpenOrReuseOrderForTableAction` /
+      `UpdateOrderItemQuantityAction` (ver ADR-004)
+- [x] Pantalla Vue de `/mesas/{table}/pedido`
+      (`resources/js/pages/mesas/Pedido.vue`) — incluye el stepper de
+      editar/quitar `OrderItem` (brecha cerrada, ver arriba)

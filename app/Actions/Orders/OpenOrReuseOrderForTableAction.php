@@ -37,6 +37,15 @@ class OpenOrReuseOrderForTableAction
             return $order;
         }
 
-        return $table->orders()->where('status', OrderStatus::Abierta)->latest()->firstOrFail();
+        // Mesa ocupada puede tener su orden activa en cualquier estado
+        // previo a por_cobrar (abierta → enviada_cocina → lista) — no solo
+        // abierta. Sin esto, GET /mesas/{table}/pedido devolvía 404 al
+        // recargar después de "Enviar a Cocina" (bug encontrado
+        // construyendo la pantalla Vue, ver decision-log.md). Mismo
+        // criterio de estados "activos" ya usado en RequestBillAction (#7).
+        return $table->orders()
+            ->whereIn('status', [OrderStatus::Abierta, OrderStatus::EnviadaCocina, OrderStatus::Lista])
+            ->latest()
+            ->firstOrFail();
     }
 }

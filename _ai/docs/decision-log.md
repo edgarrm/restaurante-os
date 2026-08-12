@@ -325,3 +325,86 @@ entre el script inline de `app.blade.php` que aplica la clase `dark` antes
 de montar Vue, y el manejo reactivo de tema de `useAppearance`/reka-ui. Sin
 investigar a fondo — queda como deuda técnica para la próxima sesión de
 frontend.
+
+### 2026-08-12 — PASO 0 de la pantalla Vue de Toma de Pedido (#3): stepper de "La Cuenta"
+**Estado:** 🟢 Resuelta — implementada, ver `toma-de-pedido.spec.md`
+**Contexto:** la brecha ya documentada el 2026-08-11 (Happy Path narra un
+stepper de editar/quitar `OrderItem`, pero no existía endpoint) llegó a su
+momento de decisión real al construir la pantalla Vue.
+**Opciones evaluadas:** (a) lanzar sin stepper (renglones de solo lectura,
+agregar más solo re-tocando el platillo en el menú); (b) construir el
+endpoint ahora, ampliando alcance — mismo criterio que `por_cobrar` en #7.
+**Decisión:** (b), confirmada con el usuario (`AskUserQuestion`) antes de
+tocar el primer componente. Se agregó `PATCH
+/mesas/{table}/pedido/items/{orderItem}` (`UpdateOrderItemQuantityAction`),
+solo editable mientras la orden sigue `abierta` (`OrderNotEditableException`
+si ya se envió a cocina — decisión de diseño no ambigua, consistente con
+que el Happy Path ordena el stepper *antes* de "Enviar a Cocina").
+
+**Dos hallazgos de plomería, no ambiguos, corregidos sin `AskUserQuestion`
+(mismo criterio que el bug de `forceFill` en #7 — se documentan aquí, no se
+preguntan):**
+
+1. **Bug: recargar `/pedido` tras "Enviar a Cocina" daba 404.**
+   `OpenOrReuseOrderForTableAction` solo reutilizaba órdenes `abierta` para
+   una mesa `ocupada`; una vez la orden pasa a `enviada_cocina`, la
+   siguiente carga de la pantalla no encontraba ninguna orden que
+   reutilizar. Nunca se detectó en Fase 02 porque los Integration Tests de
+   `enviar` solo hacían `assertRedirect()` sin seguir el redirect — la
+   primera vez que algo realmente sigue ese redirect es un navegador real
+   con la pantalla Vue montada. Corregido ampliando el query a `[abierta,
+   enviada_cocina, lista]`, mismo criterio de "estados activos" que
+   `RequestBillAction` (#7).
+
+2. **Arquitectura: los 422 de dominio no llegaban limpios al cliente Inertia
+   real.** `addItem`/`send` usaban `abort(422, $mensaje)`, probado solo con
+   `postJson()` (fuerza `Accept: application/json`, por eso los tests
+   pasaban). Un cliente Inertia real manda `Accept: text/html` — Laravel
+   entonces NO trata la petición como "expects JSON" (confirmado con un test
+   exploratorio: `expectsJson()` es `false` para una petición Inertia
+   real), así que el `abort()` devuelve una página HTML completa sin el
+   header `X-Inertia`. Inertia trata eso como respuesta "no-Inertia" y
+   muestra un modal con el HTML crudo del error — no el mensaje del spec
+   ("Este platillo ya no está disponible."). Es la primera pantalla con
+   formularios POST/PATCH reales del proyecto (Mapa de Mesas es solo
+   lectura), así que es la primera vez que este patrón se ejercita de
+   verdad. **Fix:** los tres 422 de dominio de este flujo
+   (`MenuItemNotAvailableException`, `TableNotAcceptingOrdersException`,
+   `EmptyOrderException`, `OrderNotEditableException`) ahora se lanzan como
+   `ValidationException::withMessages([...])`, que sí viaja por el redirect
+   302 + errores flasheados que Inertia espera (mismo mecanismo documentado
+   en `.ai/rules/feature.md` para errores de validación normales). Verificado
+   en browser real: banner inline con el mensaje correcto, menú
+   refrescado automáticamente (ítem deshabilitado), sin modal ni página de
+   error. **Aplica también a Cobro/Reservas** cuando se construyan sus
+   pantallas Vue — sus controllers actuales (`PaymentController`,
+   `ReservationController`) probablemente tengan el mismo patrón de
+   `abort(422, ...)` sin probar contra un cliente Inertia real.
+
+3. **Edge Case sin implementar: mesa en `por_cobrar` navegando a
+   `/pedido`.** El spec ya documentaba el comportamiento esperado
+   (redirige a `/cobro` con aviso), pero `OrderController::show()` nunca lo
+   implementó — antes de este fix, devolvía 404 (ninguna orden en
+   `[abierta, enviada_cocina, lista]` que reutilizar). En el flujo normal
+   Mapa de Mesas ya evita esta ruta (enlaza directo a `/cobro` para mesas
+   `por_cobrar`), pero una pestaña vieja o el botón "atrás" del navegador sí
+   puede llegar aquí. Corregido con un redirect a `cobro.show` +
+   `Inertia::flash('notice', ...)`.
+
+**Otro hallazgo, no corregido (fuera de alcance):** si un mesero agrega un
+`OrderItem` nuevo a una orden que ya está `lista` (todos sus ítems previos
+`listo`), ese ítem nuevo no hace reaparecer la orden en `GET /cocina`
+(`KitchenController::index()` filtra por `Order.status = enviada_cocina`,
+no `lista`). Es un cruce entre `toma-de-pedido` y `cocina-kds` fuera de
+alcance de esta sesión — pendiente para cuando se toque cualquiera de las
+dos pantallas de nuevo.
+
+**Verificado con:** `tests/Unit/Actions/Orders/UpdateOrderItemQuantityActionTest.php`,
+`tests/Unit/Actions/Orders/OpenOrReuseOrderForTableActionTest.php`,
+`tests/Feature/TomaDePedidoTest.php`, la suite completa (`php artisan test
+--compact`, 164 passed / 4 skipped), `npm run lint:check`, `npm run
+types:check`, y verificación visual manual en browser real
+(`demo.localhost:8000`) en light y dark mode: agregar/incrementar ítems,
+bajar cantidad a 0 para quitar un renglón, enviar a cocina (orden queda
+`enviada_cocina`, mesa sigue `ocupada`, pantalla se puede seguir usando), y
+el caso de ítem desactivado a medio uso (banner correcto, menú refrescado).
