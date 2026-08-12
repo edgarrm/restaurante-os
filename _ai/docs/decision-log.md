@@ -391,7 +391,9 @@ preguntan):**
    puede llegar aquí. Corregido con un redirect a `cobro.show` +
    `Inertia::flash('notice', ...)`.
 
-**Otro hallazgo, no corregido (fuera de alcance):** si un mesero agrega un
+**Otro hallazgo, no corregido en esta sesión (fuera de alcance):** 🟢
+Resuelta — ver entrada "2026-08-12 — REDEV-31: ítem agregado a orden
+`lista` no reaparecía en Cocina (KDS)" más abajo. Si un mesero agrega un
 `OrderItem` nuevo a una orden que ya está `lista` (todos sus ítems previos
 `listo`), ese ítem nuevo no hace reaparecer la orden en `GET /cocina`
 (`KitchenController::index()` filtra por `Order.status = enviada_cocina`,
@@ -1021,3 +1023,71 @@ No se hizo merge a `main` en su momento — `feature/inventario` quedó lista
 para revisión manual, a pedido explícito del prompt de arranque de esa
 sesión, y se mergeó a pedido explícito del usuario a continuación (ver
 commit de merge en `main`).
+
+### 2026-08-12 — REDEV-31: ítem agregado a orden `lista` no reaparecía en Cocina (KDS)
+**Estado:** 🟢 Resuelta — implementada, ver `toma-de-pedido.spec.md`
+**Contexto:** hallazgo documentado como "fuera de alcance" en la entrada
+anterior de este mismo día ("PASO 0 de la pantalla Vue de Toma de Pedido
+(#3): stepper de 'La Cuenta'"): `AddItemToOrderAction` permite agregar un
+`OrderItem` a una orden `lista` (solo bloquea si la mesa está
+`por_cobrar`), pero `Order.status` se quedaba en `lista` —
+`KitchenController::index()` solo filtra por `enviada_cocina`, así que el
+ítem nuevo nunca llegaba a cocina en la práctica. Confirmado vigente en el
+código antes de tocar nada.
+
+**Decisión (confirmada con el usuario vía `AskUserQuestion`):** de las tres
+opciones planteadas en el ticket (revertir `Order.status` a
+`enviada_cocina`; ampliar el query de `KitchenController::index()` para
+incluir `lista` con ítems no-`listo`; o bloquear el agregado sobre una
+orden `lista`), se eligió **revertir `Order.status` a `enviada_cocina`**
+dentro de `AddItemToOrderAction` cuando la orden ya estaba `lista`. Razón:
+mantiene `KitchenController` como única fuente de verdad de "orden activa"
+(`status = enviada_cocina`) sin duplicar esa lógica en el query de
+`completedOrders` (la alternativa de ampliar el query obligaba a excluir
+esas mismas órdenes de `completedOrders` para no mostrarlas en ambas
+secciones a la vez). `Order.status` sí es `$fillable` (a diferencia de
+`Table.status`/`MenuItem.available`), así que un `update()` normal basta —
+no aplica el patrón `forceFill` sugerido en el ticket.
+
+**TDD:** test unitario nuevo en `AddItemToOrderActionTest.php` y de
+integración cruzado en `TomaDePedidoTest.php` (`POST
+/mesas/{table}/pedido/items` sobre una orden `lista` → `Order` regresa a
+`enviada_cocina` → `GET /cocina` la vuelve a incluir en `orders`) — ambos
+en rojo antes del fix (confirmando el bug), verdes después. Edge Case +
+Integration Test agregados a `toma-de-pedido.spec.md` (no se creó un spec
+nuevo).
+
+**Trampa de entorno de worktree, no del código de la app:** este worktree
+se creó sin `vendor`, `.env`, `node_modules` ni el sqlite compartido.
+Symlinkear `vendor` (mismo patrón ya documentado en sesiones previas) rompió
+`Illuminate\Foundation\Application::inferBasePath()` — Composer registra el
+autoloader con la ruta *real* del symlink (el checkout de `main` en
+`~/Herd/restaurante-os`), así que `TestCase::createApplication()` cargaba
+el `bootstrap/app.php` de `main`, no el de este worktree: la suite entera
+fallaba con `Target class [config] does not exist.` (bootstrap roto), no
+por error de código, incluso en tests preexistentes sin tocar. Fix:
+`composer install` real en el worktree (no symlink) para que el
+autoloader registre su propia ruta. `.env`, `node_modules` y el sqlite
+compartido sí se symlinkearon sin problema — el afectado era solo
+`vendor`, por cómo `inferBasePath()` resuelve el classloader.
+
+**Verificado con:** `AddItemToOrderActionTest.php`, `TomaDePedidoTest.php`,
+`CocinaKdsTest.php` (26/26), suite completa (`php artisan test --compact`,
+208 tests / 204 passed / 4 skipped preexistentes / 0 fallos),
+`vendor/bin/pint --dirty` (sin cambios), `npm run lint:check` (0 errores),
+`npm run types:check` (0 errores), `npm run build` (✓ — necesario para que
+la suite completa renderizara páginas Inertia con el manifest de Vite
+ausente en este worktree nuevo). Verificación visual en browser real
+(`demo.localhost:8000`, `composer run dev`, cuenta `Admin QA` — mismo rol
+que un mesero/cocinero para estas dos pantallas): Mesa 1 con una orden
+`lista` (Guacamole + Tacos al Pastor, ambos `listo`) confirmada ausente de
+`/cocina` (solo en "Completadas"); se agregó Flan Napolitano desde
+`/mesas/2/pedido` → el badge de la orden cambió de "Lista" a "Enviada a
+cocina" en vivo; `/cocina` volvió a mostrar la tarjeta de Mesa 1 en la
+lista activa, con Guacamole/Tacos al Pastor como badges "Listo" (sin botón,
+mismo criterio ya establecido para ítems ya listos) y Flan Napolitano con
+botón "Listo" accionable. Sin errores en consola.
+
+No se hizo merge a `main` — rama
+`realmoraleslabs/redev-31-bug-item-agregado-a-orden-lista-no-reaparece-en-cocina-kds`
+queda lista para revisión manual (ver ticket).
