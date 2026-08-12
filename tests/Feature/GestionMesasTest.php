@@ -45,11 +45,16 @@ test('DELETE /mesas/gestion/{table} con orden activa devuelve 422 y no elimina l
         'status' => $status,
     ]);
 
+    // deleteJson fuerza Accept: application/json, así que aquí sí vemos el
+    // 422 JSON estándar de ValidationException (no abort() plano) — mismo
+    // criterio que OrderController/PaymentController (ver
+    // .ai/rules/feature.md).
     $response = $this->actingAs($this->admin)
-        ->delete(route('tables.destroy', $table));
+        ->deleteJson(route('tables.destroy', $table));
 
     $response->assertStatus(422);
-    expect(Table::find($table->id))->not->toBeNull();
+    expect($response->json('errors.name.0'))->toBe('No se puede eliminar una mesa con una cuenta activa.')
+        ->and(Table::find($table->id))->not->toBeNull();
 })->with([
     'abierta' => OrderStatus::Abierta,
     'enviada_cocina' => OrderStatus::EnviadaCocina,

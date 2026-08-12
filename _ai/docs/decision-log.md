@@ -661,6 +661,21 @@ corregir ahí tampoco — si se prioriza, cambiar los tres controllers a
 `ValidationException::withMessages(...)` en un pase de backend dedicado
 sería más consistente que seguir mitigando por pantalla.
 
+**🟢 Resuelto (2026-08-12, REDEV-32):** `TableController::destroy` y
+`StaffController` (`store` y `update`, dos ocurrencias) ya cambiaron a
+`ValidationException::withMessages(['name' => ...])` /
+`['role' => ...]` — mismo patrón que `OrderController`/
+`PaymentController`/`ReservationController`/`InventarioController`.
+`tests/Feature/GestionMesasTest.php` y `GestionStaffTest.php` se
+ajustaron primero a `deleteJson`/`postJson`/`patchJson` +
+`errors.<campo>.0` (antes solo comprobaban `assertStatus(422)`, que no
+detectaba el bug porque `abort(422, ...)` también devuelve ese status —
+confirmado en rojo antes del fix). Verificado además en browser real
+(`demo.localhost:8000`) con requests directos (`fetch` con
+`X-XSRF-TOKEN`) contra una mesa con orden `abierta` y un intento de
+`role=admin`: ambos devuelven `422` con `errors.<campo>` estructurado, ni
+la mesa se eliminó ni la cuenta se creó.
+
 **Verificado con:** `php artisan test --compact --filter=GestionMesas`
 (8/8, sin cambios — backend intacto), `npm run lint:check`, `npm run
 types:check`, y **click-through completo en browser real** (sandbox

@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,7 +40,14 @@ class StaffController extends Controller
                 'role' => $request->string('role')->toString(),
             ]);
         } catch (InvalidStaffRoleException $exception) {
-            abort(422, $exception->getMessage());
+            // ValidationException, no abort(422, ...): un abort() plano no
+            // trae el header X-Inertia, así que el cliente Inertia real lo
+            // trata como respuesta "no-Inertia" y muestra un modal con el
+            // HTML crudo del error en vez del mensaje del spec — mismo bug
+            // ya documentado en OrderController/PaymentController/
+            // ReservationController/InventarioController (ver
+            // decision-log.md).
+            throw ValidationException::withMessages(['role' => $exception->getMessage()]);
         }
 
         return to_route('staff.index');
@@ -52,7 +60,14 @@ class StaffController extends Controller
         try {
             $action->handle($user, $request->string('role')->toString());
         } catch (InvalidStaffRoleException $exception) {
-            abort(422, $exception->getMessage());
+            // ValidationException, no abort(422, ...): un abort() plano no
+            // trae el header X-Inertia, así que el cliente Inertia real lo
+            // trata como respuesta "no-Inertia" y muestra un modal con el
+            // HTML crudo del error en vez del mensaje del spec — mismo bug
+            // ya documentado en OrderController/PaymentController/
+            // ReservationController/InventarioController (ver
+            // decision-log.md).
+            throw ValidationException::withMessages(['role' => $exception->getMessage()]);
         }
 
         return to_route('staff.index');

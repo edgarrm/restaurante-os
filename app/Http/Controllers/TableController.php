@@ -10,6 +10,7 @@ use App\Models\Table;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -56,7 +57,14 @@ class TableController extends Controller
         try {
             $action->handle($table);
         } catch (TableHasActiveOrderException $exception) {
-            abort(422, $exception->getMessage());
+            // ValidationException, no abort(422, ...): un abort() plano no
+            // trae el header X-Inertia, así que el cliente Inertia real lo
+            // trata como respuesta "no-Inertia" y muestra un modal con el
+            // HTML crudo del error en vez del mensaje del spec — mismo bug
+            // ya documentado en OrderController/PaymentController/
+            // ReservationController/InventarioController (ver
+            // decision-log.md).
+            throw ValidationException::withMessages(['name' => $exception->getMessage()]);
         }
 
         return to_route('tables.index');
