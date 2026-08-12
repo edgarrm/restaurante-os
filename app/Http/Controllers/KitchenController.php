@@ -16,18 +16,34 @@ class KitchenController extends Controller
      * Vista de cocina / KDS (_ai/specs/cocina-kds.spec.md, US-2.1). Devuelve
      * las órdenes en `enviada_cocina` con todos sus ítems (incluyendo los
      * que ya están `listo`) — así cocina conserva el contexto completo de
-     * la orden, según el Happy Path del spec. Cuando una orden pasa a
-     * `lista` (ver MarkOrderItemReadyAction), deja de aparecer aquí.
+     * la orden, según el Happy Path del spec. `table` e `items.menuItem` se
+     * cargan para que la pantalla muestre el nombre de la mesa y del
+     * platillo en vez de solo IDs (mismo criterio que PaymentController).
+     *
+     * Cuando una orden pasa a `lista` (ver MarkOrderItemReadyAction) deja
+     * de aparecer en `orders`, pero se muestra en `completedOrders` (PASO
+     * 0, ver decision-log.md) — las 20 más recientes, informativas
+     * únicamente (todos sus ítems ya están `listo`, no hay acción posible
+     * sobre ellas desde esta pantalla).
      */
     public function index(): Response
     {
         $orders = Order::query()
             ->where('status', OrderStatus::EnviadaCocina)
-            ->with('items')
+            ->with(['table', 'items.menuItem'])
+            ->oldest('opened_at')
+            ->get();
+
+        $completedOrders = Order::query()
+            ->where('status', OrderStatus::Lista)
+            ->with(['table', 'items.menuItem'])
+            ->latest('updated_at')
+            ->limit(20)
             ->get();
 
         return Inertia::render('cocina/Index', [
             'orders' => $orders,
+            'completedOrders' => $completedOrders,
         ]);
     }
 

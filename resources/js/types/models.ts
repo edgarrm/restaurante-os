@@ -41,6 +41,7 @@ export interface Order {
     opened_at: string;
     closed_at: string | null;
     items?: OrderItem[];
+    table?: Table;
 }
 
 export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';

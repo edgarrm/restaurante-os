@@ -455,3 +455,64 @@ permanece `por_cobrar`). Usuario de prueba: se creó un mesero temporal
 Ana Admin y resetearla fue bloqueado por el clasificador de permisos
 (acción sobre credenciales); limpieza posterior dejó la cuenta de prueba
 en la base (el borrado falló por una FK, no crítico para un tenant demo).
+
+### 2026-08-11 — PASO 0 de la pantalla Vue de Cocina/KDS (#6)
+**Estado:** 🟢 Resuelta — implementada, ver `cocina-kds.spec.md`
+**Contexto:** tres puntos que el spec dejaba explícitamente "a definir en
+Fase 03", confirmados con el usuario antes de tocar el primer componente
+(`resources/js/pages/cocina/Index.vue`):
+
+a) **Umbral de urgencia visual (>15 min)**: SÍ se implementa esta sesión.
+   Cálculo 100% client-side (minutos transcurridos desde `order.opened_at`,
+   sin lógica nueva de servidor) — a partir de 15 min la tarjeta y el badge
+   de tiempo cambian a `destructive` (rojo, semántica ya definida en el
+   design system para "necesita atención").
+b) **Órdenes en `lista`**: se agrega una sección "Completadas" en la misma
+   pantalla (en vez de solo desaparecer). Requirió ampliar
+   `KitchenController::index()`: nuevo prop `completedOrders` con las
+   últimas 20 órdenes en status `lista` (`latest('updated_at')->limit(20)`),
+   puramente informativo — sin botones, ya que todos sus ítems están
+   `listo`. `orders` (activas) no cambió de criterio de filtrado, así que
+   los tests de PASO 0 anterior (#6 backend) siguen pasando sin tocar.
+c) **Alcance del botón "Listo"**: ítem individual + botón "Listo (orden)".
+   Sin nuevo endpoint — el botón de orden encadena `PATCH
+   /cocina/items/{orderItem}/listo` uno a la vez (recursión en
+   `onFinish`, no en paralelo) sobre los ítems `pendiente`/`preparando` de
+   esa orden, reusando el único endpoint ya existente.
+
+**Plomería corregida sin `AskUserQuestion` (mismo criterio que #3/#7 — no
+ambigua, se documenta aquí):**
+1. `KitchenController::index()` solo hacía `with('items')` — se amplió a
+   `with(['table', 'items.menuItem'])`. El spec pide tarjetas "agrupadas
+   por mesa" con nombre de platillo, no solo IDs (mismo hueco que tenía
+   `PaymentController` antes de la sesión de Cobro, #7).
+2. `Order` (TS) no tenía el campo `table?: Table` — se agregó en
+   `resources/js/types/models.ts` (`OrderItem.menu_item?` ya existía).
+3. `AppSidebar.vue` mostraba "Mesas" para cualquier rol, sin importar que
+   `role:admin,mesero` en `routes/tenant.php` le devuelve 403 a `cocina`.
+   Se hizo el nav consciente de rol (`Mesas` para admin/mesero, `Cocina`
+   para admin/cocina, incluyendo el logo-link) — sin esto, un cocinero que
+   entrara a `/dashboard` (redirect genérico de Fortify tras login, sin
+   relación con esta spec) no tenía ninguna forma de llegar a `/cocina`
+   desde la UI.
+4. Wayfinder ya estaba generado con `--with-form` para `cocina.*` desde una
+   sesión anterior — no hizo falta regenerar (trampa de `.ai/rules/js.md`
+   no aplicó esta vez).
+
+**Verificado con:** `tests/Feature/CocinaKdsTest.php` (7 tests, incluye 2
+nuevos para `completedOrders` + aislamiento de tenant F-05), la suite
+completa (`php artisan test --compact`, 169 tests / 165 passed / 4
+skipped), `npm run lint:check`, `npm run types:check`, y verificación
+visual manual en browser real (Chrome real vía extensión, no el preview
+sandbox — mismo motivo que #7): enviar un pedido a cocina desde Toma de
+Pedido, verlo aparecer en `/cocina` con sus ítems y "2 min" transcurridos,
+marcar un ítem individual (badge "Listo" reemplaza el botón), marcar
+"Listo (orden)" sobre el resto → la orden desaparece de la lista activa y
+aparece en "Completadas" con badge verde "Lista"; y el caso de urgencia
+(orden sintética con `opened_at` a 20 min → tarjeta y badge en rojo).
+Usuario de prueba: se creó `cocina.qa@demo.test` (rol `cocina`) por el
+mismo motivo que `mesero.qa` en #7 (sin la contraseña real de Ana Admin);
+se reutilizó `mesero.qa@demo.test` ya existente (password reseteada a
+`password`, es una cuenta de prueba, no una cuenta real). Con esta
+pantalla se completan las 8 pantallas Must del inventario
+(`_ai/design/screen-inventory.md`).

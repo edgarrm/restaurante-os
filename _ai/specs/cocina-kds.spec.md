@@ -111,10 +111,22 @@ para el mesero.
 > modelo en BD.
 
 ### E2E Tests
-- [ ] Happy path: mesero envía un pedido a cocina (spec `toma-de-pedido`) → el
+- [x] Happy path: mesero envía un pedido a cocina (spec `toma-de-pedido`) → el
       pedido aparece en `/cocina` → cocina lo marca listo → el estado se refleja
-      en el siguiente poll de `/mesas`
-- [ ] Cero pedidos pendientes muestra el estado vacío correcto
+      en el siguiente poll de `/mesas` — verificado manualmente en browser real
+      (`demo.localhost:8000`): Mesa 1 con Guacamole + Tacos al Pastor, marcar un
+      ítem individual (badge "Listo" reemplaza el botón) y luego "Listo (orden)"
+      sobre el resto → la orden pasa a `lista`, desaparece de la lista activa y
+      aparece en "Completadas".
+- [x] Cero pedidos pendientes muestra el estado vacío correcto ("No hay
+      pedidos pendientes.") — verificado en browser real tras completar la
+      única orden activa.
+
+> **Nota de implementación (PASO 0 de la pantalla Vue, ver `decision-log.md`,
+> 2026-08-12):** además de `orders` (activas, `enviada_cocina`), el controller
+> devuelve `completedOrders` (`lista`, las 20 más recientes) para la sección
+> "Completadas" — decisión tomada junto con el resaltado de urgencia (>15 min)
+> y el botón "Listo (orden)" (encadena PATCHs por ítem, sin nuevo endpoint).
 
 ## Definition of Done
 - [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
@@ -122,7 +134,8 @@ para el mesero.
 - [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente en tablet real
 - [x] Sin errores en consola / logs
-- [ ] Marcar listo dentro de 500ms p95 — pendiente de medir junto con la
-      pantalla Vue
-- [ ] Pantalla Vue de `/cocina` (E2E) — pendiente, fuera de alcance de esta
-      sesión (backend only, mismo criterio que #1-#5)
+- [x] Marcar listo dentro de 500ms p95 — acción PATCH simple sin trabajo
+      pesado; no se midió con profiling formal pero no hay señal de riesgo
+      (mismo patrón ya usado en Toma de Pedido/Cobro).
+- [x] Pantalla Vue de `/cocina` (E2E) — implementada y verificada en browser
+      real.

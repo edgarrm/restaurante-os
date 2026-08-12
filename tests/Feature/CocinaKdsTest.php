@@ -72,6 +72,26 @@ test('PATCH /cocina/items/{orderItem}/listo sobre un ítem ya listo es idempoten
     expect($orderItem->fresh()->status)->toBe(OrderItemStatus::Listo);
 });
 
+test('GET /cocina incluye órdenes en lista dentro de completedOrders, no de orders', function () {
+    $table = Table::factory()->for($this->tenant, 'tenant')->create();
+
+    $orderLista = Order::factory()->for($this->tenant, 'tenant')->for($table)->create([
+        'opened_by' => $this->mesero->id,
+        'status' => OrderStatus::Lista,
+    ]);
+    OrderItem::factory()->for($orderLista)->for(MenuItem::factory()->for($this->tenant, 'tenant'))
+        ->create(['status' => OrderItemStatus::Listo]);
+
+    $response = $this->actingAs($this->cocina)
+        ->get(route('cocina.index'), inertiaXhrHeaders());
+
+    $response->assertOk();
+    $orderIds = collect($response->json('props.orders'))->pluck('id');
+    $completedIds = collect($response->json('props.completedOrders'))->pluck('id');
+    expect($orderIds)->not->toContain($orderLista->id)
+        ->and($completedIds)->toContain($orderLista->id);
+});
+
 test('usuario con role=mesero accede a /cocina → 403', function () {
     $response = $this->actingAs($this->mesero)->get(route('cocina.index'));
 
@@ -108,10 +128,19 @@ test('F-05: GET /cocina del restaurante A no incluye pedidos del restaurante B',
     ]);
     OrderItem::factory()->for($orderB)->for(MenuItem::factory()->for($tenantB, 'tenant'))->create();
 
+    $orderListaB = Order::factory()->for($tenantB, 'tenant')->for($tableB)->create([
+        'opened_by' => $meseroB->id,
+        'status' => OrderStatus::Lista,
+    ]);
+    OrderItem::factory()->for($orderListaB)->for(MenuItem::factory()->for($tenantB, 'tenant'))
+        ->create(['status' => OrderItemStatus::Listo]);
+
     $response = $this->actingAs($this->cocina)
         ->get(route('cocina.index'), inertiaXhrHeaders());
 
     $response->assertOk();
     $orderIds = collect($response->json('props.orders'))->pluck('id');
-    expect($orderIds)->not->toContain($orderB->id);
+    $completedIds = collect($response->json('props.completedOrders'))->pluck('id');
+    expect($orderIds)->not->toContain($orderB->id)
+        ->and($completedIds)->not->toContain($orderListaB->id);
 });
