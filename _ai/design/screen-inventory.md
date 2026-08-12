@@ -22,7 +22,7 @@ generación de código.
 
 | # | Pantalla | Ruta/Path | Descripción | Persona | Prioridad | Stitch | Stack | Figma |
 |---|----------|-----------|-------------|---------|-----------|--------|-------|-------|
-| 1 | Login | `/login` | Autenticación por rol (admin/mesero/cocina). Sin fricción — el diferenciador del producto empieza aquí. | Todas | Must | ⬜ | ⬜ | ⬜ |
+| 1 | Login | `/login` | Autenticación por rol (admin/mesero/cocina). Sin fricción — el diferenciador del producto empieza aquí. | Todas | Must | ⬜ | ✅ | ⬜ |
 | 2 | Mapa de mesas | `/mesas` | Vista de todas las mesas y su estado (libre/ocupada/por cobrar). Punto de entrada del mesero. | Ancla, Independiente | Must | ⬜ (abandonado) | ✅ | ⬜ |
 | 3 | Toma de pedido | `/mesas/{id}/pedido` | Agregar ítems del menú a la cuenta de una mesa. Debe ser operable sin entrenamiento previo. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 4 | Cocina (KDS) | `/cocina` | Lista de pedidos entrantes en tiempo real, con acción de marcar ítem/orden como listo. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |

@@ -130,9 +130,9 @@ tests Pest) en los 9. F-01 a F-06 del threat model están 🟢 Resueltos;
 quedan abiertos F-07 (bloqueo de tablet, decisión de producto pendiente del
 cliente ancla) y F-08/F-09/F-10 (bajos, no bloqueantes).
 
-**Pantallas Vue construidas (5 de 10 Must del inventario,
-`_ai/design/screen-inventory.md`):** Mapa de Mesas, Toma de Pedido, Cocina
-(KDS), Cobro/Cierre de Cuenta, Gestión de Menú — el loop operativo
+**Pantallas Vue construidas (6 de 10 Must del inventario,
+`_ai/design/screen-inventory.md`):** Login, Mapa de Mesas, Toma de Pedido,
+Cocina (KDS), Cobro/Cierre de Cuenta, Gestión de Menú — el loop operativo
 mesero→cocina→cobro es navegable end-to-end en browser real
 (`decision-log.md`, entradas del 2026-08-12 con verificación manual).
 Gestión de Menú (recién construida) tiene verificación de render
@@ -141,12 +141,18 @@ disponibilidad con eventos de mouse reales quedó incompleto — la extensión
 de Chrome se desconectó a media verificación (ver `decision-log.md`,
 entrada del 2026-08-12 "Pantalla Vue de Gestión de Menú").
 
+**2026-08-12 — Login (#1):** `resources/js/pages/auth/Login.vue` traducido
+a español y su layout (`AuthLayout.vue`) cambiado de
+`AuthSimpleLayout` a `AuthCardLayout` (ambos ya existían en el starter
+kit) para el look boxed/Card consistente con Cocina/Cobro/Pedido — afecta
+visualmente a Register/ForgotPassword/etc. (comparten el mismo layout)
+pero no se tradujo ni se tocó su lógica, fuera de alcance de este spec.
+Ver `decision-log.md` para el detalle de alcance y verificación.
+
 **Pantallas Vue Must todavía pendientes** (columna Stack de
-`screen-inventory.md` sigue ⬜): Login (usa la vista de Fortify del starter
-kit sin confirmar si cuenta como "lista" para este inventario), Gestión de
-staff, Gestión de mesas, Calendario de reservas, Nueva reserva. Sin estas,
-un admin no puede crear/editar staff ni mesas desde la UI — solo por
-tinker/seeders.
+`screen-inventory.md` sigue ⬜): Gestión de staff, Gestión de mesas,
+Calendario de reservas, Nueva reserva. Sin estas, un admin no puede
+crear/editar staff ni mesas desde la UI — solo por tinker/seeders.
 
 **Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
 app (consola: "Hydration completed but contains mismatches" / error

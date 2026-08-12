@@ -582,3 +582,73 @@ hidratación (sospecha original: script inline de `app.blade.php` que
 aplica la clase `dark` antes de montar Vue, ver entrada de Mapa de Mesas);
 (b) completar el click-through real de esta pantalla en cuanto la
 extensión esté disponible.
+
+### 2026-08-12 — Pantalla Vue de Login (#1)
+
+**Estado:** ✅ Implementada y verificada (sin browser real — ver nota)
+**Contexto:** `resources/js/pages/auth/Login.vue` ya existía completo
+(starter kit de Fortify), pero seguía ⬜ en `screen-inventory.md` porque
+todo su copy estaba en inglés ("Log in to your account", "Email
+address", etc.) mientras el resto de la app está en español. Verificado
+antes de tocar código: ningún test en `tests/Feature/Auth/` referencia el
+copy en inglés, solo comportamiento — traducir era seguro.
+**Decisión de alcance (confirmada con el usuario, `AskUserQuestion`):**
+"Traducir + alinear branding visual", no solo traducción de copy. Implicó:
+- Traducir todos los strings de `Login.vue` (título, descripción, labels,
+  placeholders, botón, `<Head title>`) a español, tono consistente con el
+  resto de la app.
+- Cambiar `AuthLayout.vue` (el wrapper que Inertia aplica a toda página
+  bajo `auth/*`, ver `resources/js/app.ts`) de `AuthSimpleLayout.vue` a
+  `AuthCardLayout.vue` — ambos ya existían en el starter kit, sin
+  construir nada nuevo. `AuthCardLayout` envuelve el formulario en un
+  `Card` (mismo componente que usan Cocina/Cobro/Pedido), dando el look
+  boxed consistente con el resto de la app en vez del div plano de
+  `AuthSimpleLayout`. Los tokens de color/tipografía (acento terracota
+  `#98430b`, Work Sans) ya se heredaban automáticamente vía
+  `resources/css/app.css` — es CSS global cargado en todo `app.blade.php`
+  sin importar la ruta, así que **no** hacía falta tocar nada para que el
+  botón/inputs ya salieran con el acento correcto; el único cambio real de
+  branding fue el layout boxed.
+- **Efecto colateral aceptado:** `AuthLayout.vue` es compartido con
+  Register, ForgotPassword, ConfirmPassword, ResetPassword — el cambio de
+  layout (look boxed) se aplica también a esas pantallas, aunque su copy
+  (en inglés) no se tocó, sigue fuera de alcance de este spec.
+**Verificado con:**
+- `npm run lint:check` y `npm run types:check` — limpios (tras regenerar
+  Wayfinder con `php artisan wayfinder:generate --with-form
+  --no-interaction`, ver `.ai/rules/js.md` — el worktree no traía
+  `resources/js/routes`/`actions` generados).
+- `php artisan test --compact --filter=Authentication` — 8/9 (1 skip
+  preexistente por `skipUnlessFortifyHas`, no relacionado a este cambio).
+- **Verificación visual real bloqueada:** la extensión de Chrome
+  (`claude-in-chrome`) no conectó, y a diferencia de sesiones anteriores
+  (ver `browser-verification-setup` en memoria) no había un preview
+  sandbox disponible como fallback en este entorno. Verificación
+  alternativa por HTTP/curl contra `demo.localhost:8000` (tenant demo
+  onboardeado en este worktree vía `tenants:onboard`, dominio corregido a
+  `demo.localhost` porque el comando lo guardó como `demo` a secas):
+  el HTML servido por SSR de Inertia confirma los strings en español
+  (`Iniciar sesión`, `Correo electrónico`, `Contraseña`,
+  `¿Olvidaste tu contraseña?`, `Recordarme`) y el wrapper `Card`
+  (`data-slot="card"`); un login real por POST con `admin.qa@demo.test` /
+  `password` devolvió sesión autenticada (confirmado con `GET /dashboard`
+  → 200 con la cookie de sesión); el link "¿Olvidaste tu contraseña?"
+  apunta a `href="/forgot-password"`, la ruta correcta. No hay
+  confirmación pixel-a-pixel del render — pendiente si se recupera la
+  extensión de Chrome o un preview sandbox en una sesión futura.
+- **Nota de higiene del entorno (revertida, no forma parte del commit):**
+  para levantar `composer run dev` en este worktree, `pnpm run dev` falló
+  por scripts de instalación bloqueados (`unrs-resolver`, `vue-demi`) y
+  casi se resuelve poniendo `allowBuilds: true` en `pnpm-workspace.yaml`
+  — eso habría revertido la protección intencional
+  `ignore-scripts=true` de `.npmrc` (documentada en
+  `.ai/rules/general.md` como el control #1 contra npm-worms). Se
+  revirtió antes de verificar nada y no se usó para la verificación de
+  arriba (que fue por HTTP directo, sin `pnpm run dev`/HMR). Dejar
+  anotado por si otra sesión se topa con el mismo bloqueo: requiere
+  decisión explícita del usuario, no bypass automático.
+
+No se hizo merge a `main` — rama `login` (worktree Orca, no se creó el
+worktree `feature/login-vue` que pedía el spec original porque Orca ya
+había aislado la sesión en `orca/workspaces/restaurante-os/login`) queda
+lista con el commit para revisión manual.
