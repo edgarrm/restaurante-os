@@ -34,7 +34,7 @@ generación de código.
 | 9b | Gestión de mesas | `/mesas/gestion` | Admin crea/edita mesas (nombre, capacidad). Agregada en Fase 05 (US-6.3) — gap del PRD original. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 10 | Inventario (stock) | `/inventario` | Lista de insumos con cantidad actual y umbral de alerta. Conteo simple, no costeo de receta. | Ancla, Independiente | Should | ⬜ | ⬜ | ⬜ |
 | 11 | Ajuste de inventario | `/inventario/{id}/ajustar` | Registrar entrada/salida manual de un insumo. | Ancla, Independiente | Should | ⬜ | ⬜ | ⬜ |
-| 12 | División de cuenta (split bill) | `/mesas/{id}/cobro/dividir` | Dividir una cuenta entre varios pagos. | Independiente | Could | ⬜ | ⬜ | ⬜ |
+| 12 | División de cuenta (split bill) | *(fusionada en #5)* | No es una pantalla separada — extiende `/mesas/{id}/cobro` (#5) con saldo pendiente, historial de pagos y un endpoint nuevo para pagos parciales, mismo patrón que #7→#6. Implementado como split por monto libre (`_ai/specs/division-de-cuenta.spec.md`); split por ítems queda documentado como brecha. | Independiente | Could | ⬜ | ✅ (ver #5) | ⬜ |
 | 13 | Dashboard del día | `/dashboard` | Resumen de ventas, mesas activas y reservas del día para el admin. | Ancla | Could | ⬜ | ⬜ | ⬜ |
 
 **Leyenda**: ⬜ Pendiente → ✅ Listo

@@ -41,6 +41,7 @@ export interface Order {
     opened_at: string;
     closed_at: string | null;
     items?: OrderItem[];
+    payments?: Payment[];
     table?: Table;
 }
 
@@ -53,6 +54,7 @@ export interface Payment {
     amount: string;
     method: PaymentMethod;
     paid_at: string;
+    collector?: { id: number; name: string };
 }
 
 export type ReservationStatus = 'confirmada' | 'sentada' | 'cancelada';

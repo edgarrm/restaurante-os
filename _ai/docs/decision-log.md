@@ -845,3 +845,71 @@ combinando ambos lados (ítem de nav "Reservas" + "Staff"/"Gestión de
 Mesas" en `AppSidebar.vue`, entradas de `decision-log.md` concatenadas en
 orden cronológico, conteo de pantallas Must en `CONTEXT.md` actualizado a
 9/9).
+
+### 2026-08-12 — PASO 0 de División de Cuenta (US-3.2, #12): mecanismo de split
+**Estado:** 🟢 Resuelta — implementada en `division-de-cuenta.spec.md` (#12),
+2026-08-12
+**Contexto:** el PRD deja abierto el mecanismo de división ("puede asignar
+ítems o montos a pagos independientes — se valida en piloto"). `Payment` ya
+es 1:N respecto a `Order` desde el día uno específicamente para esto (nota de
+alcance en `_ai/docs/data-model.md`), pero no hay UI ni Action que lo use.
+**Opciones evaluadas (`AskUserQuestion`):** (a) split por monto libre —
+registrar N pagos con un monto cada uno hasta cubrir el total, sin UI de
+selección de ítems; (b) split por ítems — asignar cada `OrderItem` a un
+"grupo de pago" y que el sistema calcule el monto de cada grupo; (c) ambos,
+(a) en esta sesión y (b) documentado como brecha.
+**Decisión:** (a), split por monto libre. (b) queda documentado como brecha
+en `division-de-cuenta.spec.md` — mismo criterio que las transiciones
+sentada/cancelada de `Reservation` (ver entrada de Reservas más abajo): sin
+modelo de "grupo de pago" ni UI de selección de ítems, extensión futura sobre
+el `Payment` 1:N ya existente si el piloto lo pide.
+
+**Decisión de arquitectura (misma sesión, no preguntada — el prompt de
+arranque delegó explícitamente esta decisión a la sesión):** para no romper
+`CloseOrderAction` (Must-have, #7, en producción), se evaluó (1) modificar
+`CloseOrderAction` directamente para comparar suma-de-pagos vs. total, o (2)
+agregar una Action nueva que `CloseOrderAction` reutiliza para el caso de
+pago único. Elegida (2) con un ajuste mínimo a `CloseOrderAction`:
+`AddPaymentToOrderAction` (nueva) registra un pago sin rechazar nunca por
+insuficiencia y cierra la orden + libera la mesa solo cuando
+`SUM(payments.amount) >= Order::total()`; `CloseOrderAction` pasó de
+comparar `amount < total` a comparar `(pagos ya registrados + amount) <
+total` — con cero pagos previos (el caso de **todos** los tests existentes
+de #7) es matemáticamente idéntico, así que `CloseOrderActionTest.php` y
+`CobroTest.php` quedaron en verde **sin modificarlos** (verificado con
+`git diff --stat` antes de cerrar la sesión). `Order::total()` se extrajo
+como método del modelo (antes vivía inline en `CloseOrderAction`) para que
+ambas Actions compartan la misma fuente de verdad. Ruta nueva `POST
+/mesas/{table}/cobro/pagos`, mismo middleware que `cobro.show`/`cobro.close`.
+
+**Bug encontrado en verificación visual (no en Pest — los tests de backend no
+ejercitan la reactividad de Vue):** tras un pago parcial, Inertia recarga las
+props de la misma instancia de `Cobro.vue` en vez de remontarla, así que el
+campo "Monto recibido" se quedaba con el valor del pago recién registrado en
+vez de reflejar el nuevo saldo pendiente. Corregido con
+`watch(saldoPendiente, ...)` que resetea `amount` cuando cambia el saldo.
+
+**Verificado con:** `tests/Unit/Actions/Orders/AddPaymentToOrderActionTest.php`
+(7/7, nuevo), `tests/Feature/DivisionDeCuentaTest.php` (8/8, nuevo),
+`tests/Feature/CobroTest.php` + `tests/Unit/Actions/Orders/CloseOrderActionTest.php`
+(12/12, #7, sin modificar), suite completa (184 tests / 180 passed / 4
+skipped preexistentes / 0 fallos), `npm run lint:check`, `npm run
+types:check`, y verificación visual en browser real: mesa/orden de prueba
+dedicada (creada y borrada por tinker, sin tocar mesas de otras sesiones en
+la DB compartida), dos pagos parciales ($50 + $80 sobre una cuenta de
+$130.00) cerraron la orden y liberaron la mesa, el flujo de un solo pago
+(sin dividir) se ve idéntico al de #7 (mismo botón "Confirmar pago ·
+$130.00", sin sección de historial), sin errores en consola.
+
+**Entorno de este worktree (Orca), no del código de la app:** mismo `pnpm
+install` accidental que en la sesión de Reservas — `pnpm-workspace.yaml`
+revertido, `pnpm-lock.yaml` borrado. `.env` copiado de `~/Herd/restaurante-os`
++ `database/database.sqlite` symlinkeado al sqlite compartido (mismo patrón
+que sesiones anteriores). Puerto 8000 ocupado por la sesión concurrente de
+Inventario (confirmado con `lsof`) — verificación visual hecha en
+`demo.localhost:8001` vía `php artisan serve --port=8001` sobre assets ya
+compilados (`npm run build`), no `composer run dev`.
+
+No se hizo merge a `main` — `feature/split-bill` queda lista para revisión
+manual. Conflicto esperado en `routes/tenant.php` si Inventario también
+agregó un bloque de rutas nuevo en su sesión concurrente.

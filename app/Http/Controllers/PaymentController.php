@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Orders\AddPaymentToOrderAction;
 use App\Actions\Orders\CloseOrderAction;
 use App\Actions\Orders\RequestBillAction;
 use App\Enums\OrderStatus;
@@ -35,7 +36,11 @@ class PaymentController extends Controller
 
         return Inertia::render('mesas/Cobro', [
             'table' => $table,
-            'order' => $order->load('items.menuItem'),
+            // 'payments.collector' (_ai/specs/division-de-cuenta.spec.md,
+            // US-3.2): historial de pagos ya registrados, para que la
+            // pantalla muestre el saldo pendiente en vez de asumir un solo
+            // pago.
+            'order' => $order->load(['items.menuItem', 'payments.collector']),
         ]);
     }
 
@@ -80,5 +85,42 @@ class PaymentController extends Controller
         }
 
         return to_route('mesas.index');
+    }
+
+    /**
+     * Registra un pago que puede ser parcial (US-3.2, split bill —
+     * _ai/specs/division-de-cuenta.spec.md). A diferencia de `close`, un
+     * monto que no cubre el saldo pendiente no es un error: se guarda como
+     * abono y la orden sigue abierta.
+     *
+     * F-03: mismo criterio que `close` — `collected_by` siempre es
+     * `$request->user()`, nunca un valor del body.
+     */
+    public function addPayment(Request $request, Table $table, AddPaymentToOrderAction $action): RedirectResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', Rule::enum(PaymentMethod::class)],
+        ]);
+
+        $order = $table->orders()
+            ->whereIn('status', [
+                OrderStatus::Abierta,
+                OrderStatus::EnviadaCocina,
+                OrderStatus::Lista,
+                OrderStatus::PorCobrar,
+                OrderStatus::Pagada,
+            ])
+            ->latest()
+            ->firstOrFail();
+
+        $order = $action->handle($order, (float) $data['amount'], PaymentMethod::from($data['method']), $request->user());
+
+        // Mismo saldo cubierto → mismo destino final que `close`: `show`
+        // solo acepta órdenes no `pagada` (ver arriba), así que quedarse en
+        // pantalla ya no es una opción una vez cerrada la cuenta.
+        return $order->status === OrderStatus::Pagada
+            ? to_route('mesas.index')
+            : to_route('cobro.show', $table);
     }
 }
