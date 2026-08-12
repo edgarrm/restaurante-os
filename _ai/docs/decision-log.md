@@ -239,3 +239,36 @@ la aserción de `Table::fresh()->status` tras implementar — confirmado con
 `tests/Unit/Actions/Orders/RequestBillActionTest.php`,
 `tests/Feature/CobroTest.php`, y la suite completa (`php artisan test
 --compact`, 142 passed / 4 skipped).
+
+### 2026-08-12 — PASO 0 de `reservas.spec.md` (#8): alcance de `GET /reservas` y transiciones de status
+**Estado:** 🟢 Resuelta (a) — implementada; 🟡 Documentada como brecha (b) —
+`reservas.spec.md` (#8), 2026-08-12
+**Contexto:** dos preguntas confirmadas con el usuario (`AskUserQuestion`)
+antes de escribir el primer test:
+
+a) **¿Qué reservas devuelve `GET /reservas`?** El único Integration Test
+   dice "las reservas del día", sin que `api-contract.yaml` documente un
+   query param de fecha. **Decisión:** `whereDate('reserved_at', today())`,
+   sin filtrar por `status` (el staff también ve las `cancelada` del día),
+   ordenadas por `reserved_at`. Sin selector de fecha para otros días —
+   fuera de alcance, ningún Test Case ni el contrato lo piden.
+
+b) **¿Se construyen las transiciones a `sentada`/`cancelada` (Happy Path
+   paso 5)?** A diferencia de la transición a `por_cobrar` en #7 (que sí se
+   amplió el alcance a petición explícita), aquí el usuario confirmó el
+   criterio por defecto de este proyecto: no construir lo que ningún Test
+   Case ni `api-contract.yaml` piden. **Queda como brecha pendiente**,
+   documentada aquí para cuando se aborde (probablemente junto con la
+   pantalla Vue de `/reservas`, que necesitará algún control para marcar
+   estas transiciones).
+
+**Nota de diseño (no ambigua, solo verificada antes de implementar):**
+`Reservation` es el primer modelo del proyecto con `table_id` **nullable**
+y sin ninguna relación padre confiable de la que heredar tenant (a
+diferencia de `OrderItem`/`Payment` en #5/#7) — por eso lleva su propio
+`tenant_id` + `BelongsToTenant`, igual que `Table`/`MenuItem`/`User`/`Order`.
+Documentado en el modelo y la migración.
+
+**Verificado con:** `tests/Unit/Actions/Reservations/CreateReservationActionTest.php`,
+`tests/Feature/ReservasTest.php`, y la suite completa (`php artisan test
+--compact`, 152 passed / 4 skipped).

@@ -6,6 +6,7 @@ use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableMapController;
@@ -149,5 +150,20 @@ Route::middleware([
         ->group(function () {
             Route::get('/', [PaymentController::class, 'show'])->name('show');
             Route::post('/', [PaymentController::class, 'close'])->name('close');
+        });
+
+    // Reservas (_ai/specs/reservas.spec.md, #8). Mismo patrón que
+    // Toma de Pedido/Cobro: `role:admin,mesero` resuelve F-06 para esta
+    // pantalla completa; sin Policy — el spec dice explícitamente
+    // "Ninguna" regla de autorización adicional. A diferencia de
+    // OrderItem/Payment, Reservation tiene su propio BelongsToTenant
+    // (table_id es nullable, sin relación padre confiable de la que
+    // heredar tenant) — ver Reservation.php.
+    Route::middleware(['auth', 'role:admin,mesero'])
+        ->prefix('reservas')
+        ->name('reservas.')
+        ->group(function () {
+            Route::get('/', [ReservationController::class, 'index'])->name('index');
+            Route::post('/', [ReservationController::class, 'store'])->name('store');
         });
 });

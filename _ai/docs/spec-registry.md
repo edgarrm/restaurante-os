@@ -17,7 +17,7 @@ No saltar a una feature cuyo prerequisito no esté al menos 🟢 Approved.
 | 5 | Toma de Pedido | `_ai/specs/toma-de-pedido.spec.md` | ✅ Implemented | ✅ | ✅ | #1, #2 |
 | 6 | Cocina (KDS) | `_ai/specs/cocina-kds.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
 | 7 | Cobro | `_ai/specs/cobro.spec.md` | ✅ Implemented | ✅ | ✅ | #5 |
-| 8 | Reservas | `_ai/specs/reservas.spec.md` | 🟡 Draft | ❌ | ❌ | #1 (opcional, `table_id` nullable) |
+| 8 | Reservas | `_ai/specs/reservas.spec.md` | ✅ Implemented | ✅ | ✅ | #1 (opcional, `table_id` nullable) |
 
 **#0 es el bloqueador real de todos los demás** — sin un tenant existente, las
 rutas de `routes/tenant.php` no son alcanzables (requieren

@@ -1,7 +1,7 @@
 # Feature: Reservas
 
 ## Status
-[x] Draft  [ ] Review  [ ] Approved  [ ] Implemented
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
 
 ## PRD Reference
 User Stories:
@@ -79,31 +79,50 @@ público para que el cliente final reserve directamente.
 ## Test Cases
 
 ### Unit Tests
-- [ ] `CreateReservationAction`: crea una reserva con status `confirmada` por
+- [x] `CreateReservationAction`: crea una reserva con status `confirmada` por
       defecto
-- [ ] `CreateReservationAction`: `reserved_at` en el pasado lanza excepción de
+- [x] `CreateReservationAction`: `reserved_at` en el pasado lanza excepción de
       validación
-- [ ] `CreateReservationAction`: `table_id` nulo es válido
+- [x] `CreateReservationAction`: `table_id` nulo es válido
 
 ### Integration Tests
-- [ ] `GET /reservas` devuelve las reservas del día ordenadas por `reserved_at`
-- [ ] `POST /reservas` con datos válidos → 200, reserva creada
-- [ ] `POST /reservas` con fecha pasada → 422
-- [ ] Usuario con `role=cocina` accede a `/reservas` → 403
-- [ ] **F-05**: con reservas en dos restaurantes, `GET /reservas` como usuario
+- [x] `GET /reservas` devuelve las reservas del día ordenadas por `reserved_at`
+- [x] `POST /reservas` con datos válidos → 200, reserva creada
+- [x] `POST /reservas` con fecha pasada → 422
+- [x] Usuario con `role=cocina` accede a `/reservas` → 403
+- [x] **F-05**: con reservas en dos restaurantes, `GET /reservas` como usuario
       del restaurante A no expone ningún `customer_name` ni `customer_phone`
       del restaurante B
-- [ ] **F-05**: asignar `table_id` de una mesa de otro restaurante a una
+- [x] **F-05**: asignar `table_id` de una mesa de otro restaurante a una
       reserva → falla
+
+> **Notas de implementación (PASO 0, ver `decision-log.md`, 2026-08-12):**
+> - `GET /reservas` filtra solo por `reserved_at` de hoy
+>   (`whereDate('reserved_at', today())`), sin excluir por `status` — el
+>   staff también ve las `cancelada` del día. Sin selector de fecha para
+>   otros días (fuera de alcance, sin query param en el contrato).
+> - `Reservation` tiene su propio `tenant_id` + `BelongsToTenant` (a
+>   diferencia de `OrderItem`/`Payment` en #5/#7) porque `table_id` es
+>   nullable — no hay relación padre confiable de la que heredar el
+>   aislamiento.
+> - Las transiciones a `sentada`/`cancelada` (Happy Path paso 5) quedan
+>   **fuera de alcance** de esta sesión — ni `api-contract.yaml` ni ningún
+>   Test Case las piden. Documentado como brecha pendiente en
+>   `decision-log.md`, mismo criterio que la brecha de editar ítems en #5.
+> - El "200" original de este documento para el POST se implementó como
+>   redirect 302 a `reservas.index`, mismo patrón PRG que #5/#6/#7.
 
 ### E2E Tests
 - [ ] Happy path: staff crea una reserva sin mesa asignada → aparece en el
       calendario del día correspondiente
 
 ## Definition of Done
-- [ ] Todos los test cases de este spec pasando (Pest)
+- [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
 - [ ] Code review completado y aprobado
-- [ ] Spec actualizado con comportamiento real implementado
+- [x] Spec actualizado con comportamiento real implementado
 - [ ] Desplegado en staging y verificado manualmente
-- [ ] Sin errores en consola / logs
-- [ ] `customer_name`/`customer_phone` ausentes de logs de aplicación
+- [x] Sin errores en consola / logs
+- [x] `customer_name`/`customer_phone` ausentes de logs de aplicación (nunca
+      se loggean explícitamente)
+- [ ] Pantalla Vue de `/reservas` (E2E) — pendiente, fuera de alcance de esta
+      sesión (backend only, mismo criterio que #1-#7)
