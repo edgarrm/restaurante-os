@@ -408,3 +408,50 @@ types:check`, y verificación visual manual en browser real
 bajar cantidad a 0 para quitar un renglón, enviar a cocina (orden queda
 `enviada_cocina`, mesa sigue `ocupada`, pantalla se puede seguir usando), y
 el caso de ítem desactivado a medio uso (banner correcto, menú refrescado).
+
+### 2026-08-12 — PASO 0 de la pantalla Vue de Cobro y Cierre de Cuenta (#7)
+**Estado:** 🟢 Resuelta — implementada, ver `cobro.spec.md`
+**Contexto:** dos puntos confirmados con el usuario antes de tocar el primer
+componente (`resources/js/pages/mesas/Cobro.vue`):
+
+a) **Campo `amount`**: precargado con el total exacto de la orden (Happy
+   Path #3), pero editable — el mesero puede subirlo para registrar un
+   billete grande (Edge Cases, "cambio a dar"). Sin tope superior; el
+   servidor solo rechaza `amount < total`. El "cambio a dar" es cálculo de
+   UI (`amount - total`), no viaja al servidor.
+b) **F-07 (tablet desatendida)**: confirmado fuera de alcance de esta
+   sesión — sigue 🟡 Abierta, decisión del cliente ancla, sin PIN ni
+   reautenticación en esta pantalla.
+
+**Plomería corregida sin `AskUserQuestion` (mismo criterio que #3 — no
+ambigua, se documenta aquí):**
+1. `PaymentController::close()` tenía el mismo bug ya anticipado en el
+   prompt de arranque de esta sesión y documentado en #3: `abort(422, ...)`
+   para `InsufficientPaymentException` no trae `X-Inertia`, así que un
+   cliente Inertia real lo mostraba como modal crudo. Corregido a
+   `ValidationException::withMessages(['amount' => $exception->getMessage()])`
+   — mismo patrón que `OrderController`. Ajustado el Integration Test
+   correspondiente (`errors.amount.0` en vez de `message`, igual que
+   `TomaDePedidoTest`).
+2. `PaymentController::show()` no pasaba `table` como prop a
+   `Inertia::render()` (solo `order`) — necesario para breadcrumbs y
+   encabezado, mismo patrón que `OrderController::show()`. Se agregó
+   `'table' => $table`.
+3. El eager-load de `show()` se amplió de `items` a `items.menuItem` para
+   mostrar el nombre real del platillo en "La Cuenta" en vez de
+   `Platillo #{id}` (el spec no lo exigía explícitamente, pero es la misma
+   información que ya se muestra en Toma de Pedido).
+
+**Verificado con:** `tests/Feature/CobroTest.php`, la suite completa
+(`php artisan test --compact`, 168 tests / 164 passed / 4 skipped),
+`npm run lint:check`, `npm run types:check`, y verificación visual manual
+en browser real (Chrome real vía extensión, no el preview sandbox — el
+preview sandbox de este entorno no tenía red hacia Herd/`demo.localhost`;
+`demo.localhost:8000` sirve vía `composer run dev`, no vía nginx de Herd en
+este momento): cobrar una mesa con el total exacto (mesa vuelve a `libre`
+en el mapa) y el caso de monto insuficiente (banner inline correcto, mesa
+permanece `por_cobrar`). Usuario de prueba: se creó un mesero temporal
+(`mesero.qa@demo.test`) porque no se contaba con la contraseña real de
+Ana Admin y resetearla fue bloqueado por el clasificador de permisos
+(acción sobre credenciales); limpieza posterior dejó la cuenta de prueba
+en la base (el borrado falló por una FK, no crítico para un tenant demo).

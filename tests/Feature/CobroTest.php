@@ -70,7 +70,7 @@ test('POST /mesas/{table}/cobro con monto insuficiente devuelve 422', function (
         ->postJson(route('cobro.close', $table), ['amount' => 100.00, 'method' => PaymentMethod::Efectivo->value]);
 
     $response->assertStatus(422);
-    expect($response->json('message'))->toBe('El monto no cubre el total de la cuenta ($130.00).')
+    expect($response->json('errors.amount.0'))->toBe('El monto no cubre el total de la cuenta ($130.00).')
         ->and($order->fresh()->status)->not->toBe(OrderStatus::Pagada)
         ->and(Payment::count())->toBe(0);
 });

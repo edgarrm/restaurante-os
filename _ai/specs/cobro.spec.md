@@ -131,10 +131,31 @@ mesa vuelve a `status=libre`.
 >   redirect 302 a `mesas.index`, mismo patrón PRG que #5/#6.
 
 ### E2E Tests
-- [ ] Happy path completo: orden con ítems → cobrar el total exacto → mesa
-      vuelve a `libre` en el mapa de mesas
-- [ ] Error crítico: intentar cobrar con monto insuficiente → mensaje correcto,
-      la mesa NO cambia de estado
+- [x] Happy path completo: orden con ítems → cobrar el total exacto → mesa
+      vuelve a `libre` en el mapa de mesas (verificado en browser real,
+      `demo.localhost:8000`, 2026-08-12)
+- [x] Error crítico: intentar cobrar con monto insuficiente → mensaje correcto,
+      la mesa NO cambia de estado (verificado en browser real, banner inline
+      "El monto no cubre el total de la cuenta ($X.XX)." — no modal crudo)
+
+> **Notas de implementación (pantalla Vue, ver `decision-log.md`,
+> 2026-08-12):**
+> - `PaymentController::close()` tenía el mismo bug ya documentado en
+>   Toma de Pedido (#3): `abort(422, ...)` no trae `X-Inertia`, así que un
+>   cliente Inertia real lo mostraba como modal crudo. Corregido a
+>   `ValidationException::withMessages(['amount' => ...])`, mismo patrón que
+>   `OrderController`.
+> - `PaymentController::show()` no pasaba `table` como prop — se agregó
+>   (necesario para breadcrumbs/encabezado, mismo patrón que
+>   `OrderController::show()`), y se amplió el eager-load a
+>   `items.menuItem` para mostrar el nombre real del platillo en vez de
+>   `Platillo #{id}`.
+> - Campo `amount`: precargado con el total exacto de la orden (Happy Path
+>   #3), editable por el mesero (para registrar un billete grande — Edge
+>   Cases), sin tope superior. "Cambio a dar" es cálculo de UI, no viaja al
+>   servidor.
+> - F-07 (tablet desatendida) se mantuvo fuera de alcance de esta sesión —
+>   sigue 🟡 Abierta, decisión del cliente ancla.
 
 ## Definition of Done
 - [x] Todos los test cases de Unit + Integration de este spec pasando (Pest)
@@ -145,5 +166,5 @@ mesa vuelve a `status=libre`.
 - [ ] Cobro dentro de 500ms p95 — pendiente de medir junto con la pantalla Vue
 - [x] Monto no aparece en logs de texto plano fuera de la tabla `payments`
       (nunca se loggea explícitamente)
-- [ ] Pantalla Vue de `/cobro` (E2E) — pendiente, fuera de alcance de esta
-      sesión (backend only, mismo criterio que #1-#6)
+- [x] Pantalla Vue de `/cobro` (E2E) — implementada
+      (`resources/js/pages/mesas/Cobro.vue`), verificada en browser real

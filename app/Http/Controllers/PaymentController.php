@@ -11,6 +11,7 @@ use App\Models\Table;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +34,8 @@ class PaymentController extends Controller
         $order = $action->handle($order);
 
         return Inertia::render('mesas/Cobro', [
-            'order' => $order->load('items'),
+            'table' => $table,
+            'order' => $order->load('items.menuItem'),
         ]);
     }
 
@@ -68,7 +70,13 @@ class PaymentController extends Controller
         try {
             $action->handle($order, (float) $data['amount'], PaymentMethod::from($data['method']), $request->user());
         } catch (InsufficientPaymentException $exception) {
-            abort(422, $exception->getMessage());
+            // ValidationException, no abort(): un abort() plano no trae el
+            // header X-Inertia, así que el cliente Inertia real lo trata
+            // como respuesta "no-Inertia" y muestra un modal con el HTML
+            // crudo del error en vez del mensaje del spec — mismo bug
+            // documentado en OrderController (ver decision-log.md,
+            // 2026-08-12, PASO 0 de la pantalla Vue de Toma de Pedido).
+            throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
         }
 
         return to_route('mesas.index');

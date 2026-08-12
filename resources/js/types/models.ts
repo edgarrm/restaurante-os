@@ -30,6 +30,7 @@ export interface OrderItem {
     quantity: number;
     unit_price: string;
     status: OrderItemStatus;
+    menu_item?: MenuItem;
 }
 
 export interface Order {
@@ -40,4 +41,15 @@ export interface Order {
     opened_at: string;
     closed_at: string | null;
     items?: OrderItem[];
+}
+
+export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
+
+export interface Payment {
+    id: number;
+    order_id: number;
+    collected_by: number;
+    amount: string;
+    method: PaymentMethod;
+    paid_at: string;
 }
