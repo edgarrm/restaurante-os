@@ -516,3 +516,69 @@ se reutilizó `mesero.qa@demo.test` ya existente (password reseteada a
 `password`, es una cuenta de prueba, no una cuenta real). Con esta
 pantalla se completan las 8 pantallas Must del inventario
 (`_ai/design/screen-inventory.md`).
+
+### 2026-08-12 — Corrección de alcance: solo 4 de 10 pantallas Must tenían Vue, no 8
+
+**Estado:** 🟢 Resuelta (corrección de estado) — ver `_ai/CONTEXT.md`
+**Contexto:** el prompt de arranque de esta sesión daba por hecho que "las 8
+pantallas Must del inventario" estaban completas (heredado de la nota de
+cierre de la entrada anterior, 2026-08-12/Cocina KDS). Verificado contra
+`_ai/design/screen-inventory.md`: la columna Stack solo tiene ✅ en 4 filas
+(Mapa de Mesas, Toma de Pedido, Cocina KDS, Cobro) — las 4 pantallas de los
+specs #4/#5/#6/#7. Las otras 6 filas Must (Login, Gestión de menú, Gestión
+de staff, Gestión de mesas, Calendario de reservas, Nueva reserva) seguían
+⬜. Lo que sí estaba completo eran los **9 specs backend** (#0-#8).
+**Decisión (confirmada con el usuario, `AskUserQuestion`):** completar las
+pantallas Vue Must que faltan, una por sesión (mismo patrón que #1-#7),
+empezando por Gestión de Menú. `_ai/CONTEXT.md` actualizado con el estado
+real. Ver [[spec-relay-workflow]] y `decision-log-habit` (verificar antes
+de afirmar que algo está completo).
+
+### 2026-08-12 — Pantalla Vue de Gestión de Menú (#2)
+
+**Estado:** 🟡 Implementada, verificación E2E en browser incompleta
+**Contexto:** primera pantalla CRUD (crear/editar, no solo lectura ni
+selección) del proyecto — `resources/js/pages/menu/Index.vue`. Backend ya
+existía completo (spec #2, Implemented). Sin `AskUserQuestion` de PASO 0:
+no había ambigüedad de contrato, todo el trabajo fue de UI sobre endpoints
+ya probados.
+**Decisiones de diseño (no ambiguas, criterio de consistencia con el resto
+de la app):**
+- Lista agrupada por categoría (mismo patrón que el menú de selección en
+  `Pedido.vue`), con `Editar` (abre diálogo) y `Desactivar`/`Activar`
+  (`router.patch` directo, sin diálogo — reversible y de un tap, como
+  `adjustQuantity` en Pedido.vue).
+- Dos diálogos (`Dialog` de reka-ui) con `useForm`, no el componente
+  `<Form>` declarativo que usan las páginas de `settings/*` del starter
+  kit — los diálogos necesitan `onSuccess` para cerrarse y limpiar estado,
+  que `useForm` da directo; ningún otro dominio del proyecto usa `<Form>`
+  todavía.
+- `<datalist>` con las categorías ya existentes, enlazado a ambos inputs
+  de categoría — mitiga (sin normalizar) el riesgo ya documentado en
+  `gestion-menu.spec.md` de categorías duplicadas con distinta
+  capitalización.
+- Nav: se agregó "Menú" a `AppSidebar.vue`, visible solo para `admin`
+  (único rol con acceso a `/menu`, `role:admin` en `routes/tenant.php`).
+**Verificado con:** `tests/Feature/GestionMenuTest.php` (9/9), `npm run
+lint:check`, `npm run types:check`, y una verificación visual parcial en
+browser real (`demo.localhost:8000`, login como `admin.qa@demo.test` —
+cuenta de prueba nueva, mismo motivo que `mesero.qa`/`cocina.qa`: sin la
+contraseña real de Ana Admin): la lista renderiza agrupada por categoría y
+el diálogo "Nuevo platillo" abre con los campos correctos, confirmado por
+captura de pantalla.
+**No verificado — bloqueado por herramienta, no por el código:** el
+click-through completo de crear/editar/alternar disponibilidad con eventos
+de mouse reales. Los clics sintéticos del tool de automatización del
+navegador no llegaban de forma confiable a algunos botones (un
+`.click()` nativo vía JS sí abría el diálogo correctamente, confirmando
+que el componente funciona) — mismo síntoma que el hallazgo abierto de la
+sesión de Mapa de Mesas ("Hydration completed but contains mismatches" /
+error `createProvider`, ya documentado ahí como deuda técnica de toda la
+app, no introducida por esta pantalla). La extensión de Chrome se
+desconectó a media verificación y no volvió a conectar en el resto de la
+sesión, cortando el intento de aislar la causa. **Pendiente para la
+próxima sesión de frontend:** (a) investigar la causa raíz del mismatch de
+hidratación (sospecha original: script inline de `app.blade.php` que
+aplica la clase `dark` antes de montar Vue, ver entrada de Mapa de Mesas);
+(b) completar el click-through real de esta pantalla en cuanto la
+extensión esté disponible.

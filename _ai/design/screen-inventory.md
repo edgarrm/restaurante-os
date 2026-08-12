@@ -29,7 +29,7 @@ generación de código.
 | 5 | Cobro / cierre de cuenta | `/mesas/{id}/cobro` | Aplica pago a la cuenta de una mesa y la libera. Un solo método de pago en v1. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 6 | Calendario de reservas | `/reservas` | Vista de reservas del día/semana, gestionada por staff (no pública). | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 7 | Nueva reserva | `/reservas/nueva` | Formulario simple: nombre, teléfono, hora, número de personas, mesa asignada. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
-| 8 | Gestión de menú | `/menu` | CRUD de platillos: nombre, precio, categoría, disponibilidad. Dato base para que el POS funcione. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
+| 8 | Gestión de menú | `/menu` | CRUD de platillos: nombre, precio, categoría, disponibilidad. Dato base para que el POS funcione. | Ancla, Independiente | Must | ⬜ | ✅ | ⬜ |
 | 9 | Gestión de staff | `/staff` | Admin crea/edita cuentas de mesero y cocina, asigna rol. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 9b | Gestión de mesas | `/mesas/gestion` | Admin crea/edita mesas (nombre, capacidad). Agregada en Fase 05 (US-6.3) — gap del PRD original. | Ancla, Independiente | Must | ⬜ | ⬜ | ⬜ |
 | 10 | Inventario (stock) | `/inventario` | Lista de insumos con cantidad actual y umbral de alerta. Conteo simple, no costeo de receta. | Ancla, Independiente | Should | ⬜ | ⬜ | ⬜ |

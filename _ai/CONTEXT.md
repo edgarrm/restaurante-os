@@ -122,17 +122,44 @@ quedó guardado (`_ai/design/screen-inventory.md` tiene el detalle del proyecto
 Stitch), pero la generación de pantallas está fallando del lado del servicio —
 retomar antes de escribir el primer `_ai/specs/{feature}.spec.md`.
 
-**2026-08-12 — Los 8 specs Must Have del registry (#0-#8) están
-`✅ Implemented`** (ver `_ai/docs/spec-registry.md`): Onboarding de Tenant,
-Gestión de Mesas, Gestión de Menú, Gestión de Staff, Mapa de Mesas, Toma de
-Pedido, Cocina (KDS), Cobro, Reservas. Todo backend-only (Actions +
-controllers + rutas + tests Pest), **sin ninguna pantalla Vue todavía** —
-cada spec lo documenta explícitamente en su Definition of Done. F-01 a F-06
-del threat model están 🟢 Resueltos; quedan abiertos F-07 (bloqueo de
-tablet, decisión de producto pendiente del cliente ancla) y F-08/F-09/F-10
-(bajos, no bloqueantes). Brechas documentadas pendientes en
-`decision-log.md`: editar/quitar ítems de una orden (#5) y transiciones de
-`Reservation` a `sentada`/`cancelada` (#8). Próximo paso a decidir con el
-usuario: Fase 03 (pantallas Vue de las 8 features) o Should Have
-(Inventario, sin spec todavía) — ver `_ai/docs/spec-registry.md`, sección
+**2026-08-12 — Los 9 specs del registry (#0-#8) están `✅ Implemented`**
+(ver `_ai/docs/spec-registry.md`): Onboarding de Tenant, Gestión de Mesas,
+Gestión de Menú, Gestión de Staff, Mapa de Mesas, Toma de Pedido, Cocina
+(KDS), Cobro, Reservas — backend completo (Actions + controllers + rutas +
+tests Pest) en los 9. F-01 a F-06 del threat model están 🟢 Resueltos;
+quedan abiertos F-07 (bloqueo de tablet, decisión de producto pendiente del
+cliente ancla) y F-08/F-09/F-10 (bajos, no bloqueantes).
+
+**Pantallas Vue construidas (5 de 10 Must del inventario,
+`_ai/design/screen-inventory.md`):** Mapa de Mesas, Toma de Pedido, Cocina
+(KDS), Cobro/Cierre de Cuenta, Gestión de Menú — el loop operativo
+mesero→cocina→cobro es navegable end-to-end en browser real
+(`decision-log.md`, entradas del 2026-08-12 con verificación manual).
+Gestión de Menú (recién construida) tiene verificación de render
+confirmada por captura, pero el click-through de crear/editar/alternar
+disponibilidad con eventos de mouse reales quedó incompleto — la extensión
+de Chrome se desconectó a media verificación (ver `decision-log.md`,
+entrada del 2026-08-12 "Pantalla Vue de Gestión de Menú").
+
+**Pantallas Vue Must todavía pendientes** (columna Stack de
+`screen-inventory.md` sigue ⬜): Login (usa la vista de Fortify del starter
+kit sin confirmar si cuenta como "lista" para este inventario), Gestión de
+staff, Gestión de mesas, Calendario de reservas, Nueva reserva. Sin estas,
+un admin no puede crear/editar staff ni mesas desde la UI — solo por
+tinker/seeders.
+
+**Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
+app (consola: "Hydration completed but contains mismatches" / error
+`createProvider`) — causa clics sintéticos poco confiables en algunos
+botones (un `.click()` nativo sí funciona). Documentado primero en la
+sesión de Mapa de Mesas, reproducido de nuevo en Gestión de Menú. Sin
+investigar a fondo — sospecha original: script inline de `app.blade.php`
+que aplica la clase `dark` antes de montar Vue.
+
+Brecha documentada pendiente en `decision-log.md`: transiciones de
+`Reservation` a `sentada`/`cancelada` (#8, sin endpoint ni control en UI).
+
+Próximo paso a decidir con el usuario: completar las pantallas Vue Must que
+faltan, arrancar Should Have (Inventario, sin spec todavía) o Could Have
+(split bill, dashboard del día) — ver `_ai/docs/spec-registry.md`, sección
 "Pendiente de spec".

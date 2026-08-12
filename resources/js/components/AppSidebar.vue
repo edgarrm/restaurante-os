@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChefHat, LayoutGrid } from '@lucide/vue';
+import { ChefHat, LayoutGrid, UtensilsCrossed } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { index as cocinaIndex } from '@/routes/cocina';
+import { index as menuIndex } from '@/routes/menu';
 import { index as mesasIndex } from '@/routes/mesas';
 import type { NavItem } from '@/types';
 
@@ -36,6 +37,10 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (role.value === 'admin' || role.value === 'cocina') {
         items.push({ title: 'Cocina', href: cocinaIndex(), icon: ChefHat });
+    }
+
+    if (role.value === 'admin') {
+        items.push({ title: 'Menú', href: menuIndex(), icon: UtensilsCrossed });
     }
 
     return items;
