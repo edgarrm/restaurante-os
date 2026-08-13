@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\MenuItemController;
@@ -53,6 +54,19 @@ Route::middleware([
     // autenticado de un tenant y por lo tanto necesitan el mismo contexto de
     // tenancy que /login (F-01, _ai/docs/threat-model.md).
     require __DIR__.'/settings.php';
+
+    // Dashboard del día (_ai/specs/dashboard-del-dia.spec.md, #13, Could).
+    // Reemplaza la ruta `dashboard` del starter kit (antes en
+    // routes/web.php, sin contexto de tenant ni restricción de rol) — ver
+    // PASO 0 del spec. `role:admin`: única persona con acceso, mismo
+    // patrón que Inventario. Nombre de ruta plano `dashboard` (no
+    // `dashboard.index` como el resto de pantallas de una sola ruta, ej.
+    // `mesas.index`) a propósito — preserva el nombre ya usado por
+    // Wayfinder en call sites del starter kit sin tocar (`Welcome.vue`,
+    // `AppHeader.vue`), y por `App\Http\Responses\LoginResponse`.
+    Route::middleware(['auth', 'role:admin'])
+        ->get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
 
     // Gestión de Mesas (_ai/specs/gestion-mesas.spec.md, #1). `role:admin`
     // resuelve F-06 (_ai/docs/threat-model.md) para esta pantalla completa;

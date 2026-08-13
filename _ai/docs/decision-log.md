@@ -1213,3 +1213,90 @@ resuelve el base path desde la ruta *real* del symlink (el checkout de
 sin tocar. Corregido con un `composer install` real en este worktree
 (borrando el symlink primero). `.env` y el sqlite compartido sí se
 symlinkearon sin problema.
+
+### 2026-08-12 — REDEV-27: PASO 0 de Dashboard del día (#13) — ruta `dashboard` ya existía
+
+**Estado:** 🟢 Resuelta — implementada, ver `_ai/specs/dashboard-del-dia.spec.md`
+**Contexto:** el ticket (`_ai/design/screen-inventory.md` #13, Could, última
+pantalla pendiente del inventario original) pedía confirmar con el usuario,
+antes de escribir el primer test: las métricas exactas del resumen, si la
+pantalla es de solo lectura, y el/los rol(es) con acceso.
+
+**Encontrado en PASO 0, no anticipado por el ticket:** ya existía una ruta
+`dashboard` — el placeholder del starter kit (`routes/web.php`, sin
+contexto de tenant, sin restricción de rol, `Dashboard.vue` con
+`PlaceholderPattern`) — y `config('fortify.home')` = `/dashboard` es el
+redirect post-login para **los tres roles** vía
+`Laravel\Fortify\Http\Responses\LoginResponse`. Reemplazar esa ruta con
+`role:admin` (necesario para datos reales de tenant) habría dejado a
+mesero/cocina con un 403 justo después de iniciar sesión.
+
+**Preguntas resueltas con el usuario (`AskUserQuestion`, una ronda, 4
+preguntas):**
+1. Ventas del día = suma de `Payment.amount` con `paid_at` de hoy (opción
+   sugerida por el ticket, confirmada).
+2. Mesas activas = `Table.status != libre` (opción sugerida por el ticket,
+   confirmada).
+3. Reservas del día = `reserved_at` de hoy **excluyendo** `cancelada`
+   (distinto del criterio de `reservas.spec.md` #8, que sí las incluye
+   porque el staff operativo necesita verlas — el usuario decidió que un
+   resumen ejecutivo no debe contar canceladas).
+4. Ruta `/dashboard`: reemplazar la genérica del starter kit, `role:admin`
+   exclusivo, y agregar la lógica de redirect por rol para que
+   mesero/cocina no queden bloqueados post-login.
+
+**Decisiones de implementación derivadas de la pregunta 4 (no preguntadas
+explícitamente, resueltas por precedente/patrón del proyecto):**
+- Nombre de ruta `dashboard` (flat, no `dashboard.index` como el resto de
+  pantallas de una sola ruta) — preserva los call sites de Wayfinder ya
+  existentes en `Welcome.vue`/`AppHeader.vue` (starter kit, sin tocar,
+  fuera del flujo real de tenant) sin necesidad de editarlos.
+- Redirect por rol implementado bindeando `App\Http\Responses\LoginResponse`
+  (mecanismo oficial de extensión de Fortify) en vez de tocar
+  `config('fortify.home')` — un valor estático no puede depender del rol
+  del usuario autenticado.
+- Sin Action: `DashboardController::index()` delgado, solo lectura sin
+  lógica de negocio, mismo criterio que `KitchenController`/
+  `InventarioController`.
+
+**TDD:** `tests/Feature/DashboardDelDiaTest.php` (10 tests: métricas,
+exclusión de canceladas, 403 por rol, aislamiento de tenant F-05, redirect
+post-login por rol) escrito primero, confirmado en rojo (activeTables,
+todayReservations, 403s y redirects fallando o dando 500 por falta de
+ruta/backend), luego implementado hasta verde. `tests/Feature/Auth/
+AuthenticationTest.php` (test preexistente que asumía que todo login cae
+en `/dashboard`) y `tests/Feature/DashboardTest.php` (smoke test del
+starter kit, asumía acceso sin restricción de rol) actualizados para
+reflejar el nuevo comportamiento — ambos ya no aplicaban al comportamiento
+real tras el cambio.
+
+**Verificado con:** `php artisan test --compact` (218 tests, 214 passed, 4
+skipped preexistentes, 0 fallos), `vendor/bin/pint --dirty` (1 archivo
+corregido, formato de imports), `npm run lint:check` (0 errores), `npm run
+types:check` (0 errores), `npm run build` (✓), y verificación visual en
+browser real (`demo.localhost:8000`, cuenta `Admin QA`): datos reales del
+tenant demo (4 mesas activas con status/color correcto, $0.00 en ventas,
+estado vacío de reservas), light y dark mode, sin errores de consola (no
+se reprodujo el mismatch de hidratación transversal de REDEV-30 en esta
+sesión).
+
+**Plomería de worktree — mismo trap ya documentado en sesiones previas
+(Reservas, REDEV-30, REDEV-31):** este worktree se creó sin `vendor`,
+`.env` ni el sqlite compartido. `.env` y `database/database.sqlite`
+symlinkeados a `~/Herd/restaurante-os` sin problema; `vendor` se instaló
+con `composer install` real (no symlink) para evitar el bug ya conocido de
+`inferBasePath()` resolviendo la ruta del checkout de `main` en vez de la
+del worktree. PHP 8.5 ya estaba en el PATH del shell de esta sesión (Herd),
+sin necesitar el workaround de `php85` documentado en sesiones anteriores.
+
+**Hallazgo fuera de alcance, no corregido en esta sesión:** `POST
+/mesas/{table}/cobro` (`_ai/specs/cobro.spec.md`, #7) devuelve 404 en el
+tenant demo para Mesa 3 (id real 4, status `por_cobrar`) — reproducido por
+clic real en `/mesas` y por navegación directa a `/mesas/4/cobro`. No
+investigado a fondo: fuera del alcance de REDEV-27, y los tests
+automatizados de `CobroTest.php` siguen en verde (probablemente un
+problema de datos del tenant demo específico, no del código). Follow-up
+creado en Linear: REDEV-33 (parented bajo REDEV-27).
+
+No se hizo merge a `main` — rama `redev-27-dashboard-del-d-a` (issue
+REDEV-27) queda lista para revisión manual.
