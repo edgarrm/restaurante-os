@@ -12,6 +12,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Table;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     tenancy()->initialize(actingInTenant());
@@ -120,4 +121,78 @@ test('CloseOrderAction: con pagos parciales previos insuficientes, un monto que 
 
     expect($order->fresh()->status)->toBe(OrderStatus::PorCobrar)
         ->and(Payment::count())->toBe(1);
+});
+
+test('handleForItems: pago de grupo que no cubre el saldo no cierra la orden ni libera la mesa', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $item = $order->items()->where('unit_price', 30.00)->sole();
+
+    $result = (new AddPaymentToOrderAction)->handleForItems($order, [$item->id], PaymentMethod::Efectivo, $collectedBy);
+
+    expect($result->status)->toBe(OrderStatus::PorCobrar)
+        ->and($order->table->fresh()->status)->toBe(TableStatus::PorCobrar)
+        ->and(Payment::count())->toBe(1)
+        ->and((float) Payment::sole()->amount)->toBe(30.00)
+        ->and($item->fresh()->payment_id)->toBe(Payment::sole()->id);
+});
+
+test('handleForItems: pago de grupo que cubre el total cierra la orden y libera la mesa', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $itemIds = $order->items()->pluck('id')->all();
+
+    $result = (new AddPaymentToOrderAction)->handleForItems($order, $itemIds, PaymentMethod::Tarjeta, $collectedBy);
+
+    expect($result->status)->toBe(OrderStatus::Pagada)
+        ->and($order->table->fresh()->status)->toBe(TableStatus::Libre)
+        ->and(Payment::count())->toBe(1)
+        ->and((float) Payment::sole()->amount)->toBe(130.00);
+});
+
+test('handleForItems: ítem ya asignado a un pago previo lanza ValidationException y no crea un segundo Payment', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $item = $order->items()->where('unit_price', 30.00)->sole();
+    (new AddPaymentToOrderAction)->handleForItems($order, [$item->id], PaymentMethod::Efectivo, $collectedBy);
+
+    expect(fn () => (new AddPaymentToOrderAction)->handleForItems($order->fresh(), [$item->id], PaymentMethod::Efectivo, $collectedBy))
+        ->toThrow(ValidationException::class);
+
+    expect(Payment::count())->toBe(1);
+});
+
+test('handleForItems: ítem que no pertenece a la orden lanza ValidationException', function () {
+    $order = ordenParaDividir();
+    $otraOrden = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $itemAjeno = $otraOrden->items()->first();
+
+    expect(fn () => (new AddPaymentToOrderAction)->handleForItems($order, [$itemAjeno->id], PaymentMethod::Efectivo, $collectedBy))
+        ->toThrow(ValidationException::class);
+
+    expect(Payment::count())->toBe(0);
+});
+
+test('handleForItems: orden ya pagada no crea un segundo Payment (idempotente)', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $order->update(['status' => OrderStatus::Pagada]);
+    Payment::factory()->for($order)->create(['collected_by' => $collectedBy->id, 'amount' => 130.00]);
+    $itemId = $order->items()->first()->id;
+
+    $result = (new AddPaymentToOrderAction)->handleForItems($order, [$itemId], PaymentMethod::Efectivo, $collectedBy);
+
+    expect($result->status)->toBe(OrderStatus::Pagada)
+        ->and(Payment::count())->toBe(1);
+});
+
+test('F-03: handleForItems registra collected_by igual al usuario autenticado pasado a la Action', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $itemId = $order->items()->first()->id;
+
+    (new AddPaymentToOrderAction)->handleForItems($order, [$itemId], PaymentMethod::Efectivo, $collectedBy);
+
+    expect(Payment::sole()->collected_by)->toBe($collectedBy->id);
 });

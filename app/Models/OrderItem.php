@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property int $quantity
  * @property string $unit_price
  * @property OrderItemStatus $status
+ * @property int|null $payment_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -60,5 +61,13 @@ class OrderItem extends Model
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
+    }
+
+    /**
+     * @return BelongsTo<Payment, $this>
+     */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 }
