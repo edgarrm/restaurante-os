@@ -228,8 +228,47 @@ actualizaba tras un pago parcial) y corregido — ver nota de
 implementación en el spec. Suite completa: 184 tests, 180 passed, 4
 skipped (preexistentes), 0 fallos.
 
-Próximo paso a decidir con el usuario: con las 9 pantallas Must, la
-primera Should (Inventario) y la primera Could (División de Cuenta)
-construidas y mergeadas, queda Dashboard del día (#13, Could) como única
-pantalla pendiente del inventario original — ver
-`_ai/docs/spec-registry.md`.
+**2026-08-12 — Dashboard del día (#13 del inventario, Could, última
+pantalla pendiente del inventario original) implementada**
+(`_ai/specs/dashboard-del-dia.spec.md`, branch
+`redev-27-dashboard-del-d-a`): resumen de solo lectura con 3 métricas
+(ventas de hoy = suma de `Payment.amount` con `paid_at` de hoy; mesas
+activas = `Table.status != libre`; reservas de hoy = `reserved_at` de hoy
+con `status` en `{confirmada, sentada}`, excluyendo canceladas —
+decisiones confirmadas con el usuario vía `AskUserQuestion` en PASO 0) más
+dos listas de apoyo (mesas activas, reservas de hoy). Sin Action —
+`DashboardController::index()` delgado, solo composición de queries,
+mismo criterio que `KitchenController`/`InventarioController`.
+
+**Hallazgo no anticipado en el ticket, resuelto en PASO 0: ya existía una
+ruta `dashboard` genérica del starter kit** (`routes/web.php`, sin
+contexto de tenant, accesible a los 3 roles, apuntando a un `Dashboard.vue`
+de placeholder) y `config('fortify.home')` la usaba como redirect
+post-login **para los tres roles**. Reemplazada por completo: la ruta
+`dashboard` (mismo nombre, deliberadamente sin agrupar como
+`dashboard.index` para no romper los call sites de Wayfinder en
+`Welcome.vue`/`AppHeader.vue`) se movió a `routes/tenant.php` con
+`role:admin`, y se agregó `App\Http\Responses\LoginResponse` (bindeada en
+`FortifyServiceProvider`) que calcula el redirect post-login según el rol:
+admin → `dashboard`, mesero → `mesas.index`, cocina → `cocina.index`. Sin
+este cambio, mesero/cocina habrían recibido 403 justo después de iniciar
+sesión. `tests/Feature/Auth/AuthenticationTest.php` y
+`tests/Feature/DashboardTest.php` (starter kit) actualizados para reflejar
+el nuevo comportamiento — ambos en verde.
+
+Click-through verificado en browser real (`demo.localhost:8000`, cuenta
+`Admin QA`): datos reales del tenant demo (4 mesas activas, $0.00 en
+ventas, estado vacío de reservas), light y dark mode, sin errores de
+consola. Suite completa: 218 tests, 214 passed, 4 skipped (preexistentes),
+0 fallos.
+
+**Hallazgo fuera de alcance, no corregido en esta sesión:** `POST
+/mesas/{table}/cobro` (ver `_ai/specs/cobro.spec.md`, #7) devuelve 404 en
+el tenant demo para una mesa real en status `por_cobrar` (Mesa 3, id 4) —
+reproducido tanto por clic real como por navegación directa a
+`/mesas/4/cobro`. No investigado a fondo (fuera del alcance de REDEV-27);
+ver `decision-log.md` y el follow-up creado en Linear.
+
+Con Dashboard del día implementado, las 9 pantallas Must, la Should
+(Inventario) y las 2 Could (División de Cuenta, Dashboard del día) del
+inventario original están construidas — ver `_ai/docs/spec-registry.md`.

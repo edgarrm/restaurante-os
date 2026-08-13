@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Boxes, CalendarClock, ChefHat, LayoutGrid, Table2, Users, UtensilsCrossed } from '@lucide/vue';
+import { Boxes, CalendarClock, ChefHat, LayoutDashboard, LayoutGrid, Table2, Users, UtensilsCrossed } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -14,6 +14,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { dashboard } from '@/routes';
 import { index as cocinaIndex } from '@/routes/cocina';
 import { index as inventarioIndex } from '@/routes/inventario';
 import { index as menuIndex } from '@/routes/menu';
@@ -24,11 +25,11 @@ import { index as tablesIndex } from '@/routes/tables';
 import type { NavItem } from '@/types';
 
 // Nav de restaurante-os (ver _ai/design/screen-inventory.md) — se amplía
-// conforme se construyen más pantallas de Fase 03. "Mesas" es el punto de
-// entrada real de mesero/admin y "Cocina" el de cocina/admin (no el
-// "Dashboard" genérico del starter kit) — filtrado por rol porque
-// `role:admin,mesero` y `role:admin,cocina` (routes/tenant.php) devuelven
-// 403 si el otro rol intenta entrar.
+// conforme se construyen más pantallas de Fase 03. Punto de entrada real
+// post-login por rol (ver App\Http\Responses\LoginResponse): admin →
+// Dashboard, mesero → Mesas, cocina → Cocina — filtrado por rol porque
+// `role:admin`/`role:admin,mesero`/`role:admin,cocina` (routes/tenant.php)
+// devuelven 403 si otro rol intenta entrar.
 const page = usePage();
 const role = computed(() => page.props.auth.user.role);
 
@@ -45,6 +46,7 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
 
     if (role.value === 'admin') {
+        items.push({ title: 'Dashboard', href: dashboard(), icon: LayoutDashboard });
         items.push({ title: 'Menú', href: menuIndex(), icon: UtensilsCrossed });
         items.push({ title: 'Staff', href: staffIndex(), icon: Users });
         items.push({ title: 'Gestión de Mesas', href: tablesIndex(), icon: Table2 });
@@ -54,9 +56,15 @@ const mainNavItems = computed<NavItem[]>(() => {
     return items;
 });
 
-// El logo enlaza al punto de entrada del rol actual — para cocina eso es
-// /cocina, no /mesas (403 si lo intentara).
-const homeHref = computed(() => (role.value === 'cocina' ? cocinaIndex() : mesasIndex()));
+// El logo enlaza al punto de entrada del rol actual — mismo destino que
+// App\Http\Responses\LoginResponse calcula tras el login.
+const homeHref = computed(() => {
+    if (role.value === 'admin') {
+        return dashboard();
+    }
+
+    return role.value === 'cocina' ? cocinaIndex() : mesasIndex();
+});
 </script>
 
 <template>

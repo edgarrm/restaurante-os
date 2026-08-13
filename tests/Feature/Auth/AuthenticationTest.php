@@ -25,7 +25,12 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    // Default del factory (sin `->mesero()`/`->admin()`/`->cocina()` explícito)
+    // es role=mesero, el default de la columna — redirige a /mesas, no a
+    // /dashboard (ver _ai/specs/dashboard-del-dia.spec.md, PASO 0: el
+    // redirect post-login ahora depende del rol). Cobertura por rol
+    // completa en DashboardDelDiaTest.php.
+    $response->assertRedirect(route('mesas.index', absolute: false));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
