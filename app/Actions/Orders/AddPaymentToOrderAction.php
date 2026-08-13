@@ -57,7 +57,12 @@ class AddPaymentToOrderAction
      * @param  array<int, int>  $itemIds
      *
      * @throws ValidationException si algún ítem no pertenece a la orden o
-     *                             ya fue asignado a otro pago
+     *                             ya fue asignado a otro pago, o si el monto
+     *                             calculado no es mayor a $0.00 (paridad
+     *                             defensiva con `min:0.01` de `addPayment`,
+     *                             aunque hoy no es alcanzable en la práctica
+     *                             porque los precios de `MenuItem` son
+     *                             positivos)
      */
     public function handleForItems(Order $order, array $itemIds, PaymentMethod $method, User $collectedBy): Order
     {
@@ -79,6 +84,12 @@ class AddPaymentToOrderAction
             $amount = (float) $items->sum(
                 fn (OrderItem $item): float => $item->quantity * (float) $item->unit_price
             );
+
+            if ($amount <= 0) {
+                throw ValidationException::withMessages([
+                    'item_ids' => 'El monto debe ser mayor a $0.00.',
+                ]);
+            }
 
             $payment = $this->createPayment($order, $amount, $method, $collectedBy);
 

@@ -355,9 +355,16 @@ un `method`, y confirma.
 - [x] **F-05 (heredado)**: aislamiento entre tenants vía
       route-model-binding de `Table` + `whereIn`/`whereNull` scoped a
       `$order->items()`.
-- [x] **Integridad de asignación**: `whereNull('payment_id')` en la
-      query de validación previene que dos pagos distintos (incluida
-      una carrera entre dos meseros) reclamen el mismo ítem dos veces.
+- [x] **Integridad de asignación**: la selección de ítems ocurre dentro
+      de `DB::transaction()` con `->lockForUpdate()` sobre la query
+      `whereNull('payment_id')`, y el `update()` que reclama los ítems
+      re-aplica el mismo `whereNull('payment_id')` verificando que el
+      conteo de filas afectadas sea exactamente el esperado — si no,
+      lanza `ValidationException` y la transacción se revierte. Esto
+      previene que dos pagos distintos (incluida una carrera entre dos
+      meseros) reclamen el mismo ítem dos veces. (Ver
+      `AddPaymentToOrderAction::handleForItems()` y
+      `.ai/rules/actions.md`, "Check-then-claim on a shared resource".)
 
 ### Performance Requirements
 Igual al resto del spec — sin cambio de volumen ni de p95 esperado.
@@ -376,7 +383,7 @@ Igual al resto del spec — sin cambio de volumen ni de p95 esperado.
   el mismo helper privado de "cierra si cubre" que `handle()`. Todo en
   `DB::transaction()`.
 - **Ruta nueva**: `POST /mesas/{table}/cobro/pagos/por-items`
-  (`cobro.pagos.por-items`), mismo grupo/middleware. Controller:
+  (`cobro.pagos.porItems`), mismo grupo/middleware. Controller:
   `PaymentController::addPaymentByItems()`.
 - **`mesas/Cobro.vue`**: toggle de dos botones (no hay componente `Tabs`
   en `resources/js/components/ui`, se evita introducir uno nuevo solo

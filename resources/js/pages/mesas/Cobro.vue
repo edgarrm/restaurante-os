@@ -375,12 +375,35 @@ function confirmPayment() {
 
                         <Separator />
 
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground">Saldo pendiente</span>
+                            <span class="font-mono text-foreground">{{ money(saldoPendiente) }}</span>
+                        </div>
+
                         <div class="flex items-center justify-between">
                             <span class="text-sm font-semibold text-foreground">Subtotal seleccionado</span>
                             <span class="font-mono text-lg font-bold text-foreground">{{ money(subtotalSeleccionado) }}</span>
                         </div>
 
-                        <Button size="lg" :disabled="selectedItemIds.length === 0 || processing" @click="confirmPaymentByItems">
+                        <!-- Finding 1 (revisión final REDEV-29): el subtotal de este
+                             panel se calcula solo de los ítems marcados, sin mirar
+                             pagos previos por monto libre — si supera el saldo
+                             pendiente, se sobrecobraría la orden (ver spec, Security
+                             Considerations). Fix a nivel UI: advertir y bloquear el
+                             botón; el servidor no cambia (eso es decisión de
+                             producto, no de este arreglo). -->
+                        <Alert v-if="subtotalSeleccionado > saldoPendiente" variant="destructive">
+                            <AlertDescription>
+                                El subtotal seleccionado ({{ money(subtotalSeleccionado) }}) supera el saldo pendiente
+                                ({{ money(saldoPendiente) }}). Deselecciona ítems o usa "Por monto" para el resto.
+                            </AlertDescription>
+                        </Alert>
+
+                        <Button
+                            size="lg"
+                            :disabled="selectedItemIds.length === 0 || subtotalSeleccionado > saldoPendiente || processing"
+                            @click="confirmPaymentByItems"
+                        >
                             <Spinner v-if="processing" class="size-4" />
                             {{ processing ? 'Cobrando…' : `Registrar pago del grupo · ${money(subtotalSeleccionado)}` }}
                         </Button>

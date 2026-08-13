@@ -196,3 +196,14 @@ test('F-03: handleForItems registra collected_by igual al usuario autenticado pa
 
     expect(Payment::sole()->collected_by)->toBe($collectedBy->id);
 });
+
+test('handleForItems: ítem con unit_price de $0.00 calcula un monto no positivo y lanza ValidationException sin crear Payment', function () {
+    $order = ordenParaDividir();
+    $collectedBy = User::factory()->create();
+    $item = OrderItem::factory()->for($order)->for(MenuItem::factory())->create(['quantity' => 1, 'unit_price' => 0.00]);
+
+    expect(fn () => (new AddPaymentToOrderAction)->handleForItems($order, [$item->id], PaymentMethod::Efectivo, $collectedBy))
+        ->toThrow(ValidationException::class, 'El monto debe ser mayor a $0.00.');
+
+    expect(Payment::count())->toBe(0);
+});
