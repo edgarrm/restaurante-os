@@ -138,11 +138,8 @@ Cobro/Cierre de Cuenta, Gestión de Menú, Gestión de Mesas, Gestión de
 Staff, Reservas — el loop operativo completo (mesero→cocina→cobro, más
 altas de mesas/staff/reservas) es navegable end-to-end en browser real
 (`decision-log.md`, entradas del 2026-08-12 con verificación manual).
-Gestión de Menú tiene verificación de render
-confirmada por captura, pero el click-through de crear/editar/alternar
-disponibilidad con eventos de mouse reales quedó incompleto — la extensión
-de Chrome se desconectó a media verificación (ver `decision-log.md`,
-entrada del 2026-08-12 "Pantalla Vue de Gestión de Menú"). Gestión de
+Gestión de Menú tiene click-through completo (crear, editar, alternar
+disponibilidad) verificado — ver REDEV-30 en `decision-log.md`. Gestión de
 Mesas tiene click-through completo (crear, editar, eliminar
 permitido/bloqueado). Gestión de Staff: lint + types + build pasan; tests
 Pest 12/12; verificación visual en browser pendiente (ver
@@ -189,13 +186,27 @@ modal crudo), salida que deja el stock en el umbral (ámbar) y en 0 (rojo),
 light y dark mode. Sin errores en consola. Ver `decision-log.md` para el
 detalle de PASO 0 y verificación.
 
-**Deuda técnica abierta, recurrente:** mismatch de hidratación en toda la
-app (consola: "Hydration completed but contains mismatches" / error
-`createProvider`) — causa clics sintéticos poco confiables en algunos
-botones (un `.click()` nativo sí funciona). Documentado primero en la
-sesión de Mapa de Mesas, reproducido de nuevo en Gestión de Menú. Sin
-investigar a fondo — sospecha original: script inline de `app.blade.php`
-que aplica la clase `dark` antes de montar Vue.
+**2026-08-12 — REDEV-30: investigado el mismatch de hidratación transversal
+— no reproducido, causa raíz real identificada como la extensión de
+automatización, no la app.** La deuda documentada abajo (Mapa de Mesas,
+Gestión de Menú, Inventario) se investigó a fondo: SSR real de Inertia
+(`data-server-rendered="true"`, confirmado activo vía el modo simplificado
+de `@inertiajs/vite`), la sospecha original del script `dark` de
+`app.blade.php` y una hipótesis de carrera por estado a nivel de módulo en
+`@inertiajs/vue3` (`headManager`/`component`/`page` — coincide
+estructuralmente con el error `createProvider` documentado, ver
+`node_modules/@inertiajs/vue3/dist/index.js`) se descartaron con pruebas
+directas (toggling de dark/system, 40 requests concurrentes contra el
+endpoint SSR de Vite tanto por `composer run dev` como por Herd nginx con
+PHP-FPM real — cero corrupción, cero warnings, cero errores, en más de 20
+cargas de página reales). Los "clics sintéticos poco confiables" sí se
+reprodujeron, pero se rastrearon hasta la extensión `claude-in-chrome`
+misma quedando en un estado roto a media sesión (mismo error
+`Cannot access a chrome-extension:// URL of different extension` ya
+documentado antes en Inventario) — con listeners inyectados se confirmó
+cero eventos `click`/`pointerdown` llegando a la página durante ese estado,
+mientras `.click()` nativo siempre funcionó. No es un bug de la app.
+Cerrado sin cambio de código — ver `decision-log.md`, entrada REDEV-30.
 
 Brecha documentada pendiente en `decision-log.md`: transiciones de
 `Reservation` a `sentada`/`cancelada` (#8, sin endpoint ni control en UI).

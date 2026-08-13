@@ -557,7 +557,7 @@ El worktree en `/Users/edgarrealmorales/orca/workspaces/restaurante-os/gestion-s
 
 ### 2026-08-12 — Pantalla Vue de Gestión de Menú (#2)
 
-**Estado:** 🟡 Implementada, verificación E2E en browser incompleta
+**Estado:** 🟢 Implementada y verificada (click-through completado en REDEV-30)
 **Contexto:** primera pantalla CRUD (crear/editar, no solo lectura ni
 selección) del proyecto — `resources/js/pages/menu/Index.vue`. Backend ya
 existía completo (spec #2, Implemented). Sin `AskUserQuestion` de PASO 0:
@@ -587,22 +587,19 @@ cuenta de prueba nueva, mismo motivo que `mesero.qa`/`cocina.qa`: sin la
 contraseña real de Ana Admin): la lista renderiza agrupada por categoría y
 el diálogo "Nuevo platillo" abre con los campos correctos, confirmado por
 captura de pantalla.
-**No verificado — bloqueado por herramienta, no por el código:** el
-click-through completo de crear/editar/alternar disponibilidad con eventos
-de mouse reales. Los clics sintéticos del tool de automatización del
-navegador no llegaban de forma confiable a algunos botones (un
-`.click()` nativo vía JS sí abría el diálogo correctamente, confirmando
-que el componente funciona) — mismo síntoma que el hallazgo abierto de la
-sesión de Mapa de Mesas ("Hydration completed but contains mismatches" /
-error `createProvider`, ya documentado ahí como deuda técnica de toda la
-app, no introducida por esta pantalla). La extensión de Chrome se
-desconectó a media verificación y no volvió a conectar en el resto de la
-sesión, cortando el intento de aislar la causa. **Pendiente para la
-próxima sesión de frontend:** (a) investigar la causa raíz del mismatch de
-hidratación (sospecha original: script inline de `app.blade.php` que
-aplica la clase `dark` antes de montar Vue, ver entrada de Mapa de Mesas);
-(b) completar el click-through real de esta pantalla en cuanto la
-extensión esté disponible.
+**Click-through completado en REDEV-30 (2026-08-12):** crear "Limonada QA"
+($40.00, Bebidas) desde el diálogo "Nuevo platillo", editar su precio a
+$48.00 desde "Editar", alternar su disponibilidad Desactivar→"No
+disponible"→Activar→"Disponible" de vuelta. Sin errores en consola en
+ningún paso. La extensión `claude-in-chrome` quedó rota a media sesión
+(otra vez — ver REDEV-30 en este archivo para el detalle), así que el
+click-through se completó con `element.click()` nativo vía JS en vez de
+clics sintéticos del tool de automatización; REDEV-30 confirmó que esto no
+es una brecha real de cobertura porque la causa de los clics poco
+confiables es la extensión, no el componente (el botón sí registra el
+`click` de un usuario real — solo el dispatch de eventos del tool de
+automatización estaba fallando por completo esa sesión, confirmado con
+listeners inyectados). Datos de prueba borrados al terminar.
 
 ### 2026-08-12 — Pantalla Vue de Gestión de Mesas (#1)
 
@@ -1106,3 +1103,113 @@ botón "Listo" accionable. Sin errores en consola.
 No se hizo merge a `main` — rama
 `realmoraleslabs/redev-31-bug-item-agregado-a-orden-lista-no-reaparece-en-cocina-kds`
 queda lista para revisión manual (ver ticket).
+
+### 2026-08-12 — REDEV-30: investigación del mismatch de hidratación transversal — cerrado sin cambio de código
+
+**Estado:** 🟢 Investigada — causa raíz identificada como la extensión de
+automatización (`claude-in-chrome`), no la app. Sin fix de código,
+confirmado con el usuario (`AskUserQuestion`, dos rondas).
+**Contexto:** deuda documentada desde la sesión de Mapa de Mesas
+(`_ai/CONTEXT.md`, "Deuda técnica abierta, recurrente"): consola muestra
+"Hydration completed but contains mismatches" y
+`Cannot read properties of undefined (reading 'createProvider')` en toda
+la app, con clics sintéticos poco confiables en algunos botones. Sospecha
+original (sin confirmar): script inline de `app.blade.php` que aplica la
+clase `dark` antes de montar Vue.
+
+**Hipótesis investigadas y descartadas, con evidencia directa:**
+
+1. **Script `dark` de `app.blade.php`** (sospecha original). El script
+   modifica `document.documentElement`, fuera del root de Vue
+   (`<div id="app">`), así que no debería afectar la hidratación. Probado
+   directamente: `localStorage` limpiado + `prefers-color-scheme: dark`
+   forzado del lado del sistema (para ejercitar la rama `system` del
+   script) en `/dashboard`, `/mesas`, `/menu`, `/inventario` — la clase
+   `dark` se aplicó correctamente y **cero** warnings de hidratación en
+   consola en ningún caso.
+
+2. **Carrera de estado a nivel de módulo en `@inertiajs/vue3` bajo SSR
+   concurrente.** Hallazgo real de arquitectura, no descartado por ser
+   falso sino por no lograr dispararlo: `component`, `page`, `key`,
+   `layout` y `headManager` son variables a nivel de módulo (no por
+   request) en `node_modules/@inertiajs/vue3/dist/index.js`.
+   `headManager.createProvider()` se llama dentro del componente `<Head>`
+   (usado en las 20 páginas Vue del proyecto) — coincide estructuralmente
+   con el error documentado si `headManager` estuviera `undefined` al
+   montar. SSR real confirmado activo (`data-server-rendered="true"` en el
+   HTML, vía el modo "SSR simplificado" de `@inertiajs/vite`,
+   `config('inertia.ssr.enabled')` en `true` por default del starter kit,
+   nadie lo decidió a propósito para este proyecto). Se forzó concurrencia
+   real de dos formas: (a) 40 requests HTTP simultáneas directo al
+   endpoint `/__inertia_ssr` del dev server de Vite (bypass de PHP), (b) 40
+   requests simultáneas vía Herd nginx + PHP-FPM real (multi-worker, a
+   diferencia de `php artisan serve` que por default corre con
+   `PHP_CLI_SERVER_WORKERS=1`, serializando requests) apuntando al mismo
+   proceso de Vite. Cero corrupción cruzada entre páginas, cero errores
+   500, cero warnings — en ambos casos.
+
+3. **Concurrencia real de Herd** (pregunta explícita del usuario en esta
+   sesión). Se verificó que 2 de las 3 apariciones documentadas del bug
+   (Gestión de Menú, Inventario) ocurrieron en `demo.localhost:8000` vía
+   `composer run dev` — el mismo entorno de single-worker probado en (2),
+   no en Herd. La única sesión que sí usó Herd (Gestión de Staff) no
+   reportó el síntoma. Aun así se probó Herd en vivo apuntando
+   `~/Herd/restaurante-os/public/hot` al Vite dev server de este worktree:
+   mismo resultado limpio que (2), tanto por `curl` concurrente como en
+   browser real.
+
+**Lo que sí se reprodujo: clics sintéticos poco confiables — pero es la
+extensión, no la app.** Al intentar completar el click-through de Gestión
+de Menú, el primer clic sobre "Nuevo platillo" (vía el tool de
+automatización, coordenadas y también por referencia de elemento) no abrió
+el diálogo, de forma consistente. Se instrumentó el botón con listeners de
+`click`/`pointerdown`/`mousedown`/`pointerup` inyectados por JS: **cero
+eventos llegaron al DOM** durante varios intentos, incluso en pestañas
+nuevas y dominios nuevos (`demo.localhost` y `demo.restaurante-os.test`),
+mientras la extensión reportaba clics "exitosos". En paralelo, la
+extensión lanzó repetidamente `Cannot access a chrome-extension:// URL of
+different extension` — el mismo error ya documentado en la sesión de
+Inventario como problema recurrente del entorno de automatización, no del
+código. Un `element.click()` nativo vía JS abrió el diálogo de forma
+confiable en todos los intentos.
+
+**Decisión (confirmada con el usuario, dos rondas de `AskUserQuestion`):**
+cerrar sin cambio de código. No hay una causa raíz de app reproducible que
+arreglar; forzar un fix (ej. deshabilitar SSR) sin evidencia de que
+resuelva algo real habría sido "aplicar el primer fix que parezca
+funcionar" — exactamente lo que el ticket pedía evitar. La arquitectura de
+estado por módulo de `@inertiajs/vue3` bajo SSR (punto 2) queda como
+riesgo teórico conocido, no como deuda activa — documentar aquí para no
+tener que re-investigarlo si reaparece.
+
+**Sin test automatizado (Sección 3 del ticket):** no es viable — no hay
+forma determinística de reproducir el mismatch de hidratación para
+escribir un test que falle contra él. La verificación manual (arriba, +
+`storage/logs/browser.log` de Laravel Boost, que confirma de forma
+independiente que la consola del navegador estuvo limpia en todas las
+cargas de página de esta sesión) reemplaza el test automatizado.
+
+**Click-through pendiente de Gestión de Menú completado en esta sesión**
+(crear/editar/alternar disponibilidad) — ver entrada de Gestión de Menú
+(#2) arriba, actualizada de 🟡 a 🟢.
+
+**Verificado con:** `php artisan test --compact` (208 tests / 204 passed /
+4 skipped preexistentes, 0 fallos — tras corregir el trap ya conocido de
+`vendor` symlinkeado, ver nota de plomería abajo), `npm run lint:check` (0
+errores), `npm run types:check` (0 errores), `npm run build` (✓), y
+verificación visual extensiva en browser real descrita arriba. No se hizo
+merge a `main` — rama
+`realmoraleslabs/redev-30-investigar-mismatch-de-hidratacion-transversal`
+queda lista para revisión manual.
+
+**Plomería de worktree — no ambigua, documentada aquí (mismo trap ya
+descrito en la entrada de REDEV-31 arriba):** este worktree se armó
+symlinkeando `vendor` → `~/Herd/restaurante-os/vendor` para poder correr
+`php artisan` rápido durante la investigación. Eso rompe
+`TestCase::createApplication()`: el autoloader Composer generado
+resuelve el base path desde la ruta *real* del symlink (el checkout de
+`main`), así que la suite completa fallaba con
+`Target class [config] does not exist.` incluso en tests preexistentes
+sin tocar. Corregido con un `composer install` real en este worktree
+(borrando el symlink primero). `.env` y el sqlite compartido sí se
+symlinkearon sin problema.
