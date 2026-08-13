@@ -5,12 +5,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { close as closeRoute, show as cobroShow } from '@/routes/cobro';
-import { store as addPaymentRoute } from '@/routes/cobro/pagos';
+import { porItems as addPaymentByItemsRoute, store as addPaymentRoute } from '@/routes/cobro/pagos';
 import { index as mesasIndex } from '@/routes/mesas';
 import type { Order, OrderStatus, PaymentMethod, Table } from '@/types';
 
@@ -80,6 +81,53 @@ const methodOptions: { value: PaymentMethod; label: string }[] = [
 const methodLabel = Object.fromEntries(methodOptions.map((option) => [option.value, option.label])) as Record<PaymentMethod, string>;
 
 const method = ref<PaymentMethod>('efectivo');
+
+// Split por ítems (REDEV-29, _ai/specs/division-de-cuenta.spec.md,
+// "Ampliación"): segundo modo que convive con el de monto libre, no lo
+// reemplaza.
+const mode = ref<'monto' | 'items'>('monto');
+
+const itemsSinAsignar = computed(() => cuentaLines.value.filter((line) => line.orderItem.payment_id === null));
+
+const selectedItemIds = ref<number[]>([]);
+
+function toggleItem(itemId: number) {
+    const index = selectedItemIds.value.indexOf(itemId);
+
+    if (index === -1) {
+        selectedItemIds.value.push(itemId);
+    } else {
+        selectedItemIds.value.splice(index, 1);
+    }
+}
+
+const subtotalSeleccionado = computed(() =>
+    itemsSinAsignar.value
+        .filter((line) => selectedItemIds.value.includes(line.orderItem.id))
+        .reduce((sum, line) => sum + line.subtotal, 0),
+);
+
+function confirmPaymentByItems() {
+    if (selectedItemIds.value.length === 0 || processing.value) {
+        return;
+    }
+
+    processing.value = true;
+
+    router.post(
+        addPaymentByItemsRoute.url(table.id),
+        { item_ids: selectedItemIds.value, method: method.value },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedItemIds.value = [];
+            },
+            onFinish: () => {
+                processing.value = false;
+            },
+        },
+    );
+}
 
 // Por defecto, el saldo pendiente (no el total fijo) — Happy Path #3 de
 // #7. En una cuenta sin pagos previos, saldo pendiente === total, así que
@@ -218,6 +266,9 @@ function confirmPayment() {
                                     <div class="flex flex-col">
                                         <span class="text-foreground">{{ methodLabel[payment.method] }}</span>
                                         <span class="text-xs text-muted-foreground">{{ payment.collector?.name ?? 'Mesero' }}</span>
+                                        <span v-if="payment.items?.length" class="text-xs text-muted-foreground">
+                                            {{ payment.items.map((item) => item.menu_item?.name ?? `Platillo #${item.menu_item_id}`).join(', ') }}
+                                        </span>
                                     </div>
                                     <span class="font-mono font-medium text-foreground">{{ money(Number(payment.amount)) }}</span>
                                 </li>
@@ -233,48 +284,107 @@ function confirmPayment() {
                     <CardTitle class="font-mono">Cobrar</CardTitle>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-2">
-                        <Label>Método de pago</Label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <Button
-                                v-for="option in methodOptions"
-                                :key="option.value"
-                                type="button"
-                                size="sm"
-                                :variant="method === option.value ? 'default' : 'outline'"
-                                @click="method = option.value"
-                            >
-                                {{ option.label }}
-                            </Button>
-                        </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <Button type="button" size="sm" :variant="mode === 'monto' ? 'default' : 'outline'" @click="mode = 'monto'">
+                            Por monto
+                        </Button>
+                        <Button type="button" size="sm" :variant="mode === 'items' ? 'default' : 'outline'" @click="mode = 'items'">
+                            Por ítems
+                        </Button>
                     </div>
 
-                    <div class="flex flex-col gap-2">
+                    <template v-if="mode === 'monto'">
+                        <div class="flex flex-col gap-2">
+                            <Label>Método de pago</Label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <Button
+                                    v-for="option in methodOptions"
+                                    :key="option.value"
+                                    type="button"
+                                    size="sm"
+                                    :variant="method === option.value ? 'default' : 'outline'"
+                                    @click="method = option.value"
+                                >
+                                    {{ option.label }}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center justify-between">
+                                <Label for="amount">Monto recibido</Label>
+                                <!-- Solo cuando difiere del total (ya hay pagos
+                                     previos) — en el flujo de un solo pago,
+                                     saldo pendiente === total, no se duplica. -->
+                                <span v-if="pagosRegistrados.length > 0" class="font-mono text-xs text-muted-foreground">
+                                    Saldo pendiente: {{ money(saldoPendiente) }}
+                                </span>
+                            </div>
+                            <Input id="amount" v-model="amount" type="number" min="0" step="0.01" class="font-mono" />
+                        </div>
+
+                        <div v-if="change > 0" class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground">Cambio a dar</span>
+                            <span class="font-mono font-medium text-foreground">{{ money(change) }}</span>
+                        </div>
+
+                        <Button size="lg" :disabled="!canConfirm || processing" @click="confirmPayment">
+                            <Spinner v-if="processing" class="size-4" />
+                            {{
+                                processing
+                                    ? 'Cobrando…'
+                                    : `${isPagoFinal ? 'Confirmar pago' : 'Registrar pago parcial'} · ${money(Number(amount) || 0)}`
+                            }}
+                        </Button>
+                    </template>
+                    <template v-else>
+                        <div class="flex flex-col gap-2">
+                            <Label>Método de pago</Label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <Button
+                                    v-for="option in methodOptions"
+                                    :key="option.value"
+                                    type="button"
+                                    size="sm"
+                                    :variant="method === option.value ? 'default' : 'outline'"
+                                    @click="method = option.value"
+                                >
+                                    {{ option.label }}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div v-if="itemsSinAsignar.length === 0" class="py-4 text-center text-sm text-muted-foreground">
+                            No quedan ítems sin cobrar.
+                        </div>
+                        <ul v-else class="flex flex-col gap-2">
+                            <li v-for="line in itemsSinAsignar" :key="line.orderItem.id" class="flex items-center gap-2">
+                                <Checkbox
+                                    :id="`item-${line.orderItem.id}`"
+                                    :model-value="selectedItemIds.includes(line.orderItem.id)"
+                                    @update:model-value="toggleItem(line.orderItem.id)"
+                                />
+                                <label :for="`item-${line.orderItem.id}`" class="flex flex-1 items-center justify-between gap-2 text-sm">
+                                    <span class="text-foreground">
+                                        {{ line.orderItem.menu_item?.name ?? `Platillo #${line.orderItem.menu_item_id}` }} × {{ line.orderItem.quantity }}
+                                    </span>
+                                    <span class="font-mono text-foreground">{{ money(line.subtotal) }}</span>
+                                </label>
+                            </li>
+                        </ul>
+
+                        <Separator />
+
                         <div class="flex items-center justify-between">
-                            <Label for="amount">Monto recibido</Label>
-                            <!-- Solo cuando difiere del total (ya hay pagos
-                                 previos) — en el flujo de un solo pago,
-                                 saldo pendiente === total, no se duplica. -->
-                            <span v-if="pagosRegistrados.length > 0" class="font-mono text-xs text-muted-foreground">
-                                Saldo pendiente: {{ money(saldoPendiente) }}
-                            </span>
+                            <span class="text-sm font-semibold text-foreground">Subtotal seleccionado</span>
+                            <span class="font-mono text-lg font-bold text-foreground">{{ money(subtotalSeleccionado) }}</span>
                         </div>
-                        <Input id="amount" v-model="amount" type="number" min="0" step="0.01" class="font-mono" />
-                    </div>
 
-                    <div v-if="change > 0" class="flex items-center justify-between text-sm">
-                        <span class="text-muted-foreground">Cambio a dar</span>
-                        <span class="font-mono font-medium text-foreground">{{ money(change) }}</span>
-                    </div>
-
-                    <Button size="lg" :disabled="!canConfirm || processing" @click="confirmPayment">
-                        <Spinner v-if="processing" class="size-4" />
-                        {{
-                            processing
-                                ? 'Cobrando…'
-                                : `${isPagoFinal ? 'Confirmar pago' : 'Registrar pago parcial'} · ${money(Number(amount) || 0)}`
-                        }}
-                    </Button>
+                        <Button size="lg" :disabled="selectedItemIds.length === 0 || processing" @click="confirmPaymentByItems">
+                            <Spinner v-if="processing" class="size-4" />
+                            {{ processing ? 'Cobrando…' : `Registrar pago del grupo · ${money(subtotalSeleccionado)}` }}
+                        </Button>
+                    </template>
                 </CardContent>
             </Card>
         </div>

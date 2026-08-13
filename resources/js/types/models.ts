@@ -30,6 +30,7 @@ export interface OrderItem {
     quantity: number;
     unit_price: string;
     status: OrderItemStatus;
+    payment_id: number | null;
     menu_item?: MenuItem;
 }
 
@@ -55,6 +56,7 @@ export interface Payment {
     method: PaymentMethod;
     paid_at: string;
     collector?: { id: number; name: string };
+    items?: OrderItem[];
 }
 
 export type ReservationStatus = 'confirmada' | 'sentada' | 'cancelada';
