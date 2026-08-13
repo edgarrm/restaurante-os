@@ -272,3 +272,14 @@ ver `decision-log.md` y el follow-up creado en Linear.
 Con Dashboard del día implementado, las 9 pantallas Must, la Should
 (Inventario) y las 2 Could (División de Cuenta, Dashboard del día) del
 inventario original están construidas — ver `_ai/docs/spec-registry.md`.
+
+**2026-08-13 — REDEV-29: Split por Ítems (ampliación de #12, División de
+Cuenta) implementado.** Resuelve la brecha dejada por la sesión original
+de #12 (split por monto libre). Segundo modo en `mesas/Cobro.vue` —
+selección de `OrderItem`s, monto calculado en el servidor, mismo criterio
+de cierre por monto acumulado que el modo existente; ambos modos conviven
+sin acoplarse. Ver `_ai/specs/division-de-cuenta.spec.md`, sección
+"Ampliación (REDEV-29)", y `decision-log.md` para el detalle de
+arquitectura, un bug de carrera encontrado en code review (no en
+verificación visual) y corregido, y la verificación completa. Suite: 233
+tests, 229 passed, 4 skipped, 0 fallos.

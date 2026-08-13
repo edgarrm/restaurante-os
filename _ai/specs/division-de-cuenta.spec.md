@@ -251,3 +251,197 @@ siendo correcta si ya existían pagos parciales.**
       nota de implementación arriba)
 - [x] Sin errores en consola / logs
 - [x] `npm run lint:check` y `npm run types:check` sin errores nuevos
+
+---
+
+## Ampliación (REDEV-29): Split por Ítems
+
+### Status
+[x] Draft  [ ] Review  [ ] Approved  [x] Implemented
+
+### PRD Reference
+Mismo US-3.2 que el resto de este spec. Resuelve la brecha documentada
+arriba en "Decisión de producto (PASO 0)" y en `decision-log.md`, entrada
+"2026-08-12 — PASO 0 de División de Cuenta (US-3.2, #12): mecanismo de
+split" — la opción (b) que ahí quedó diferida.
+
+### Decisión de producto (PASO 0 de REDEV-29)
+Confirmado con el usuario vía `AskUserQuestion` (2026-08-12):
+1. Modelo de datos del "grupo de pago": **FK `order_items.payment_id`**
+   (nullable, a `payments.id`) — no hay tabla `payment_groups` ni columna
+   de label suelta. Un grupo de pago ES un `Payment`; sus ítems son los
+   que quedaron con ese `payment_id`.
+2. Un `OrderItem` sin asignar a ningún pago **no bloquea el cierre** — el
+   cierre sigue siendo 100% por monto (`SUM(payments.amount) >=
+   Order::total()`), sin mirar ítems individuales. Un grupo de pago es
+   solo una forma de precalcular el monto de un pago a partir de ítems
+   elegidos.
+3. La UI **convive** con el split por monto libre ya implementado —
+   segundo modo/toggle en `mesas/Cobro.vue`, no un reemplazo.
+
+### Overview
+Mecanismo alternativo para calcular el monto de un pago parcial: en vez
+de que el mesero teclee un monto libre, selecciona los `OrderItem`s que
+un cliente del grupo va a pagar y el sistema calcula el subtotal. Al
+confirmar, se registra igual que un pago por monto libre (mismo
+`AddPaymentToOrderAction`, mismo criterio de cierre) — la única
+diferencia es cómo se calculó el monto, y que los ítems quedan
+"marcados" como cobrados por ese pago específico.
+
+### Users Affected
+Mismo — Mesero/Admin, en la misma pantalla de Cobro.
+
+### Inputs & Outputs
+**Input:** desde el modo "Por ítems" de `/mesas/{table}/cobro`, el mesero
+selecciona uno o más `OrderItem`s no asignados todavía a ningún pago, y
+un `method`, y confirma.
+**Output:**
+- El monto se calcula en el servidor como la suma de `quantity *
+  unit_price` de los ítems seleccionados — nunca se envía ni se confía
+  en un monto del cliente para este modo.
+- Mismo resultado que un pago por monto libre equivalente: si no cubre
+  el saldo, pago parcial registrado, orden/mesa sin cambio; si cubre,
+  orden `pagada`, mesa `libre`.
+- Los ítems seleccionados quedan con `payment_id` apuntando al `Payment`
+  creado y desaparecen de la lista de ítems seleccionables (ya
+  "cobrados" por ese grupo).
+
+### Happy Path
+1. Mesero cambia al modo "Por ítems" en `/mesas/{table}/cobro`.
+2. Ve la lista de ítems de la orden que **todavía no tienen
+   `payment_id`** (checkbox por ítem, nombre, cantidad, subtotal).
+3. Selecciona los ítems que un cliente del grupo va a pagar. La pantalla
+   muestra el subtotal en vivo (suma de los ítems marcados).
+4. Elige el método de pago y confirma "Registrar pago del grupo".
+5. Se crea el `Payment` con `amount` = subtotal calculado en el
+   servidor; los ítems seleccionados quedan asignados a ese pago. Si no
+   cubre el saldo pendiente, la orden sigue abierta y esos ítems ya no
+   aparecen como seleccionables (el resto sigue disponible para otro
+   grupo o para el modo "Por monto"). Si cubre, mismo cierre que el
+   resto del spec.
+6. El mesero repite con el resto del grupo, mezclando libremente modos
+   "Por ítems" y "Por monto" en pagos sucesivos sobre la misma cuenta.
+
+### Edge Cases
+| Escenario | Comportamiento esperado |
+|-----------|------------------------|
+| Selección vacía (`item_ids` sin elementos) | 422 — "Selecciona al menos un ítem." |
+| Ítem ya asignado a un pago previo (recarga con datos desactualizados, o carrera entre dos meseros) | `ValidationException` — "Uno o más ítems ya fueron cobrados en otro pago." No crea el `Payment`. |
+| Ítem que no pertenece a la orden/mesa (id manipulado en el request) | Mismo `ValidationException` que el caso anterior — la validación es "pertenece a esta orden y `payment_id` es null", sin distinguir el motivo al usuario. |
+| Todos los ítems se dejan sin asignar y la cuenta se paga entera por monto libre | Funciona igual que hoy — el split por ítems es opcional, nunca obligatorio. |
+| Mezcla de modos: algunos ítems se pagan por grupo, el resto por un monto libre final | Soportado — el cierre es por monto acumulado, no por completitud de asignación de ítems. |
+| Pago de grupo sobre una orden ya `pagada` | Idempotente — no crea un segundo `Payment`, mismo criterio que `handle()`. |
+| Mesa sin orden activa | 404 — mismo criterio que el resto del spec. |
+
+### Error States
+| Error | Mensaje al usuario | Acción de recuperación |
+|-------|-------------------|------------------------|
+| Selección vacía | "Selecciona al menos un ítem." | Marcar al menos un ítem |
+| Ítems ya cobrados o ajenos a la orden | "Uno o más ítems ya fueron cobrados en otro pago." | La pantalla recarga el estado real (Inertia) y el mesero vuelve a seleccionar |
+| Orden ya pagada | "Esta cuenta ya fue cobrada." | Redirige al mapa de mesas (igual que el resto del spec) |
+
+### Security Considerations
+- [x] Autenticación/rol: mismo middleware `role:admin,mesero` en el
+      grupo `cobro.` — la ruta nueva es hermana de `cobro.pagos.store`.
+- [x] Autorización: ninguna adicional (mismo criterio que el resto del
+      spec).
+- [x] Validación de inputs: `item_ids` array requerido, `min:1`, enteros
+      distintos; `method` del enum cerrado `PaymentMethod`.
+- [x] **Monto nunca viene del cliente** en este modo — se calcula 100%
+      en el servidor a partir de los ítems validados, cerrando cualquier
+      superficie de manipulación de precio que sí existiría si se
+      confiara en un `amount` enviado junto a los `item_ids`.
+- [x] **F-03 (heredado)**: `collected_by` siempre `$request->user()`.
+- [x] **F-05 (heredado)**: aislamiento entre tenants vía
+      route-model-binding de `Table` + `whereIn`/`whereNull` scoped a
+      `$order->items()`.
+- [x] **Integridad de asignación**: `whereNull('payment_id')` en la
+      query de validación previene que dos pagos distintos (incluida
+      una carrera entre dos meseros) reclamen el mismo ítem dos veces.
+
+### Performance Requirements
+Igual al resto del spec — sin cambio de volumen ni de p95 esperado.
+
+### Arquitectura (decisión de implementación)
+- **Migración**: `order_items.payment_id` —
+  `foreignId(...)->nullable()->constrained('payments')->nullOnDelete()`.
+- **`OrderItem::payment(): BelongsTo`** y **`Payment::items(): HasMany`**
+  — relaciones nuevas, sin tocar `$fillable` de `OrderItem` (la
+  asignación se hace vía `update()` de query builder sobre la relación,
+  no vía `fill()`/mass assignment de un modelo).
+- **`AddPaymentToOrderAction::handleForItems()`** (nuevo método, mismo
+  archivo): no toca la firma de `handle()` existente. Valida ítems
+  (pertenecen a la orden + `payment_id` null), calcula el monto en el
+  servidor, crea el `Payment`, asigna `payment_id` a los ítems, reutiliza
+  el mismo helper privado de "cierra si cubre" que `handle()`. Todo en
+  `DB::transaction()`.
+- **Ruta nueva**: `POST /mesas/{table}/cobro/pagos/por-items`
+  (`cobro.pagos.por-items`), mismo grupo/middleware. Controller:
+  `PaymentController::addPaymentByItems()`.
+- **`mesas/Cobro.vue`**: toggle de dos botones (no hay componente `Tabs`
+  en `resources/js/components/ui`, se evita introducir uno nuevo solo
+  para esto) — "Por monto" (UI existente, sin cambios) / "Por ítems"
+  (lista con checkboxes de `ui/checkbox`, ya existe en el proyecto).
+
+### Test Cases
+
+#### Unit Tests
+- [x] `handleForItems`: pago de grupo parcial (no cubre el saldo) no
+      cierra la orden ni libera la mesa
+- [x] `handleForItems`: pago de grupo que completa el total cierra la
+      orden y libera la mesa
+- [x] `handleForItems`: el monto se calcula del servidor ignorando
+      cualquier monto enviado por el cliente
+- [x] `handleForItems`: ítem ya asignado a un pago previo →
+      `ValidationException`, no crea `Payment`
+- [x] `handleForItems`: ítem que no pertenece a la orden →
+      `ValidationException`
+- [x] `handleForItems`: orden ya `pagada` → idempotente, no crea un
+      segundo `Payment`
+- [x] **F-03**: `collected_by` siempre el `$collectedBy` pasado, nunca
+      inferible de otro lado
+- [x] Ítems asignados a un `Payment` quedan con el `payment_id` correcto
+      tras `handleForItems`
+
+#### Integration Tests
+- [x] `POST /mesas/{table}/cobro/pagos/por-items` con ítems válidos y
+      monto parcial → 302 de vuelta a `cobro.show`, ítems marcados,
+      orden/mesa sin cambio
+- [x] `POST .../pagos/por-items` con ítems que completan el saldo →
+      orden `pagada`, mesa `libre`
+- [x] `item_ids` vacío → 422
+- [x] `item_ids` con un ítem ya asignado a otro pago → 422/`ValidationException`
+- [x] `item_ids` con un ítem de otra orden → 422/`ValidationException`
+- [x] Usuario con `role=cocina` → 403
+- [x] **F-03**: `collected_by` enviado en el body es ignorado
+- [x] **F-05**: mesero de otro tenant sobre la mesa → 404
+- [x] `GET /mesas/{table}/cobro` tras un pago por ítems muestra los
+      ítems ya no seleccionables y el saldo pendiente actualizado
+- [x] Todos los tests existentes de `DivisionDeCuentaTest.php`/
+      `CobroTest.php` siguen pasando sin modificarlos
+
+#### E2E Tests
+- [x] Happy path: seleccionar ítems, pagar grupo parcial, ver saldo
+      actualizado y esos ítems excluidos de la lista seleccionable
+      (verificado en browser real)
+- [x] Segundo grupo de ítems que completa el saldo cierra la cuenta y
+      libera la mesa
+- [x] Mezcla: un grupo por ítems + un pago final por monto libre cierran
+      la cuenta correctamente
+- [x] El modo "Por monto" original sigue funcionando sin cambios
+      visuales
+- [x] Light y dark mode sin errores de consola
+
+### Definition of Done (ampliación)
+- [x] Todos los test cases de esta ampliación pasando (Pest)
+- [x] `tests/Feature/DivisionDeCuentaTest.php`, `tests/Feature/CobroTest.php`
+      y `tests/Unit/Actions/Orders/CloseOrderActionTest.php` siguen en
+      verde sin modificarlos
+- [ ] Code review completado y aprobado
+- [x] Spec actualizado con comportamiento real implementado
+- [x] `decision-log.md` actualizado: brecha original marcada 🟢 Resuelta
+      con referencia a esta ampliación
+- [x] `spec-registry.md` actualizado si cambia el estado macro de #12
+- [x] Verificado manualmente en browser real, light y dark mode
+- [x] Sin errores en consola/logs
+- [x] `npm run lint:check` y `npm run types:check` sin errores nuevos

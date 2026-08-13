@@ -927,6 +927,10 @@ compilados (`npm run build`), no `composer run dev`.
 No se hizo merge a `main` en su momento — `feature/split-bill` quedó lista
 para revisión manual y se mergeó después (ver commit de merge en `main`).
 
+**🟢 Resuelta (2026-08-13):** la opción (b), split por ítems, quedó
+implementada en REDEV-29 — ver entrada "REDEV-29: Split por Ítems
+implementado" más abajo.
+
 ### 2026-08-12 — PASO 0 de `inventario.spec.md` (#9, US-5.1/US-5.2, primera
 feature Should Have): gap de alta de insumos, nombre de componente y
 alcance de autorización
@@ -1300,3 +1304,90 @@ creado en Linear: REDEV-33 (parented bajo REDEV-27).
 
 No se hizo merge a `main` — rama `redev-27-dashboard-del-d-a` (issue
 REDEV-27) queda lista para revisión manual.
+
+### 2026-08-13 — REDEV-29: Split por Ítems implementado (resuelve la
+brecha de la entrada "PASO 0 de División de Cuenta" de arriba)
+
+Implementa la opción (b) — split por ítems — que la sesión original de
+`division-de-cuenta.spec.md` (#12) dejó documentada como brecha al elegir
+(a), split por monto libre. Ver la sección nueva del spec: `## Ampliación
+(REDEV-29): Split por Ítems`.
+
+**Modelo de "grupo de pago" (PASO 0, confirmado con `AskUserQuestion`):**
+FK `order_items.payment_id` nullable a `payments.id` — no se creó tabla
+`payment_groups` ni columna de label suelta. Un grupo de pago ES un
+`Payment`; sus ítems son los que quedaron con ese `payment_id`. Un
+`OrderItem` sin asignar **no bloquea el cierre** — el cierre sigue siendo
+100% por monto acumulado (`SUM(payments.amount) >= Order::total()`), sin
+mirar ítems individuales. La UI convive con el split por monto libre ya
+implementado (toggle "Por monto"/"Por ítems" en `mesas/Cobro.vue`), no lo
+reemplaza.
+
+**Arquitectura:** `AddPaymentToOrderAction` gana `handleForItems()` (método
+hermano, `handle()` sin cambio de firma ni comportamiento — verificado por
+sus 7 tests originales y por `CloseOrderActionTest.php`/`CobroTest.php`
+siguiendo en verde sin modificarlos). Ruta nueva `POST
+/mesas/{table}/cobro/pagos/por-items` (`cobro.pagos.porItems`) →
+`PaymentController::addPaymentByItems()`. El monto nunca viene del
+cliente: se calcula 100% en el servidor sumando `quantity * unit_price` de
+los ítems validados.
+
+**Bug de carrera encontrado y corregido en code review (SDD, no en
+verificación visual esta vez):** la primera versión de `handleForItems()`
+validaba los ítems (`whereNull('payment_id')`) y calculaba el monto
+**fuera** de la `DB::transaction()`, y el `update()` final no
+re-verificaba `whereNull('payment_id')` ni el conteo de filas afectadas —
+dos llamadas concurrentes con ítems solapados podían pasar ambas la
+validación y crear dos `Payment`s contando el mismo ítem (doble conteo de
+ingreso). El propio spec (sección "Integridad de asignación") prometía
+justo la garantía que el código no cumplía — se corrigió moviendo la
+selección+validación dentro de la transacción con `lockForUpdate()`, y
+re-aplicando `whereNull('payment_id')` + verificación de conteo de filas
+en el `update()` final. Ver ledger de la sesión
+(`.superpowers/sdd/2026-08-12-division-de-cuenta-por-items/progress.md`,
+ya borrado tras el cierre — el historial de git es el registro).
+
+**Proceso de esta sesión:** ejecutada con
+`superpowers:subagent-driven-development` — un implementer subagent
+(haiku/sonnet según complejidad) + un task reviewer por task, más esta
+verificación final. 3 tasks de código (migración+Action, ruta+controller,
+frontend), todas aprobadas por su reviewer (una con 1 ronda de fix por el
+bug de carrera arriba). Sin hallazgos Critical; 2 Minor diferidos
+(duplicación de la query de lookup de orden entre `addPayment`/
+`addPaymentByItems`, y duplicación del selector "Método de pago" entre los
+dos modos de `Cobro.vue` — ambas marcadas como candidatas a extracción
+futura si se agrega un tercer modo, no defectos de esta sesión).
+
+**Entorno de este worktree (Orca), mismo patrón que sesiones anteriores:**
+creado sin `vendor/` ni `.env` — `composer install` real, `.env` y
+`database/database.sqlite` symlinkeados a `~/Herd/restaurante-os`.
+`pnpm-workspace.yaml` esta vez **no** estaba corrupto (a diferencia de
+sesiones previas) — no hizo falta revertirlo. `php`/`composer` del PATH ya
+resolvían Herd 8.5.8 sin workaround. `npm run build` fue necesario antes
+del baseline de tests (6 tests fallaban por
+`ViteManifestNotFoundException` con `vendor/`/`node_modules` recién
+instalados sin build previo).
+
+**Verificado con:** suite completa antes de empezar (218 tests / 214
+passed / 4 skipped, coincide con `_ai/CONTEXT.md`) y después (233 tests /
+229 passed / 4 skipped, 0 fallos — +15 tests nuevos exactos: 6 unit +
+9 feature). `npm run lint:check` y `npm run types:check` sin errores
+nuevos. Verificación visual en browser real (`demo.localhost:8000`, login
+`admin.qa@demo.test`, dos mesas/órdenes de prueba dedicadas creadas y
+borradas por tinker sin tocar datos de otras sesiones): pago parcial por
+ítems deja el ítem excluido de la lista seleccionable y el saldo pendiente
+actualizado; segundo grupo + un pago final por monto libre (mezcla de
+modos) cierra la cuenta y libera la mesa; cierre completo usando solo
+"Por ítems" (un pago cubre todos los ítems) también libera la mesa; modo
+"Por monto" solo sigue idéntico al comportamiento pre-existente; light y
+dark mode sin errores de consola (los únicos mensajes de consola
+observados fueron excepciones de una extensión de autofill del navegador,
+no de la app). Nota de tooling: los clics sintéticos del mouse no
+disparaban los handlers de Vue de forma consistente en esta sesión
+(mismo síntoma ya investigado y descartado como bug de la app en
+REDEV-30) — se usó `.click()` nativo vía JS como workaround, que sí
+disparó los handlers de forma confiable en todos los casos.
+
+No se hizo merge a `main` — rama
+`realmoraleslabs/redev-29-division-de-cuenta-por-items` (issue REDEV-29)
+queda lista para revisión manual, según pide el ticket.
