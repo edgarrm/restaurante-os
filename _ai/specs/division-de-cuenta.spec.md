@@ -444,7 +444,9 @@ Igual al resto del spec — sin cambio de volumen ni de p95 esperado.
 - [x] `tests/Feature/DivisionDeCuentaTest.php`, `tests/Feature/CobroTest.php`
       y `tests/Unit/Actions/Orders/CloseOrderActionTest.php` siguen en
       verde sin modificarlos
-- [ ] Code review completado y aprobado
+- [x] Code review completado y aprobado — 3 task reviews + 1 whole-branch
+      review (`superpowers:subagent-driven-development`), findings
+      corregidos, ver `decision-log.md`
 - [x] Spec actualizado con comportamiento real implementado
 - [x] `decision-log.md` actualizado: brecha original marcada 🟢 Resuelta
       con referencia a esta ampliación

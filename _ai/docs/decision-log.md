@@ -1388,6 +1388,33 @@ disparaban los handlers de Vue de forma consistente en esta sesión
 REDEV-30) — se usó `.click()` nativo vía JS como workaround, que sí
 disparó los handlers de forma confiable en todos los casos.
 
+**Whole-branch review final (opus) — hallazgo real encontrado y corregido,
+no solo el bug de carrera de arriba:** mezclar los dos modos en el orden
+"monto libre primero, ítems después" permitía cobrar de más — el panel
+"Por ítems" calculaba su subtotal solo desde el precio de los ítems
+marcados, sin ver cuánto saldo ya cubría un pago previo por monto libre.
+Ejemplo concreto: cuenta de $130, pago de $100 por monto (saldo $30),
+cambio a "Por ítems", selecciona ítems por $130 (su precio completo, no
+relacionado al saldo real) → servidor acepta un segundo pago de $130 →
+$230 registrados contra una cuenta de $130, infla el reporte de ventas
+del día (`DashboardController`). Corregido a nivel UI (sin tocar la
+semántica del servidor, a propósito — el reviewer lo dejó así
+deliberadamente: capear en servidor cambiaría qué significa "estos ítems
+quedaron pagados", decisión de producto, no de un reviewer): el panel
+"Por ítems" ahora muestra el saldo pendiente, advierte y deshabilita el
+botón de confirmar si el subtotal seleccionado lo supera. Junto con esto,
+en la misma tanda de fixes: la sección "Integridad de asignación" del
+spec (que describía el mecanismo *previo* al fix de la carrera, no el que
+realmente se envió) se reescribió para describir el mecanismo real
+(`lockForUpdate()` + `whereNull` re-verificado + conteo de filas
+afectadas); el nombre de ruta documentado en el spec (`por-items`) se
+corrigió a `porItems` (el real); y `handleForItems()` ganó un guard de
+paridad contra `addPayment` para un monto calculado ≤ $0 (no alcanzable
+con los datos reales del proyecto, pero cerraba una asimetría gratis),
+con su test de cobertura. Suite final: 234 tests, 230 passed, 4 skipped, 0
+fallos. Re-review del fix confirmó los 4 hallazgos `ADDRESSED`, sin
+regresiones nuevas.
+
 No se hizo merge a `main` — rama
 `realmoraleslabs/redev-29-division-de-cuenta-por-items` (issue REDEV-29)
 queda lista para revisión manual, según pide el ticket.
