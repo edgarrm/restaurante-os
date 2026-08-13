@@ -67,22 +67,28 @@ class AddPaymentToOrderAction
 
         $itemIds = array_values(array_unique($itemIds));
 
-        $items = $order->items()->whereIn('id', $itemIds)->whereNull('payment_id')->get();
+        return DB::transaction(function () use ($order, $itemIds, $method, $collectedBy) {
+            $items = $order->items()->whereIn('id', $itemIds)->whereNull('payment_id')->lockForUpdate()->get();
 
-        if ($items->count() !== count($itemIds)) {
-            throw ValidationException::withMessages([
-                'item_ids' => 'Uno o más ítems ya fueron cobrados en otro pago.',
-            ]);
-        }
+            if ($items->count() !== count($itemIds)) {
+                throw ValidationException::withMessages([
+                    'item_ids' => 'Uno o más ítems ya fueron cobrados en otro pago.',
+                ]);
+            }
 
-        $amount = (float) $items->sum(
-            fn (OrderItem $item): float => $item->quantity * (float) $item->unit_price
-        );
+            $amount = (float) $items->sum(
+                fn (OrderItem $item): float => $item->quantity * (float) $item->unit_price
+            );
 
-        return DB::transaction(function () use ($order, $amount, $method, $collectedBy, $itemIds) {
             $payment = $this->createPayment($order, $amount, $method, $collectedBy);
 
-            $order->items()->whereIn('id', $itemIds)->update(['payment_id' => $payment->id]);
+            $updated = $order->items()->whereIn('id', $itemIds)->whereNull('payment_id')->update(['payment_id' => $payment->id]);
+
+            if ($updated !== count($itemIds)) {
+                throw ValidationException::withMessages([
+                    'item_ids' => 'Uno o más ítems ya fueron cobrados en otro pago.',
+                ]);
+            }
 
             return $this->closeIfCovered($order);
         });
