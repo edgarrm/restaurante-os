@@ -173,6 +173,13 @@ Route::middleware([
             // middleware/grupo, ruta hermana en vez de query param, para no
             // sobrecargar `close` con dos comportamientos distintos.
             Route::post('/pagos', [PaymentController::class, 'addPayment'])->name('pagos.store');
+
+            // Split por ítems (REDEV-29, _ai/specs/division-de-cuenta.spec.md,
+            // "Ampliación"): el monto se calcula en el servidor a partir de
+            // los OrderItems seleccionados, nunca del cliente. Nombre de ruta
+            // en camelCase (`porItems`) para que Wayfinder genere un
+            // identificador JS válido.
+            Route::post('/pagos/por-items', [PaymentController::class, 'addPaymentByItems'])->name('pagos.porItems');
         });
 
     // Reservas (_ai/specs/reservas.spec.md, #8). Mismo patrón que

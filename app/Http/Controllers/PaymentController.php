@@ -40,7 +40,7 @@ class PaymentController extends Controller
             // US-3.2): historial de pagos ya registrados, para que la
             // pantalla muestre el saldo pendiente en vez de asumir un solo
             // pago.
-            'order' => $order->load(['items.menuItem', 'payments.collector']),
+            'order' => $order->load(['items.menuItem', 'payments.collector', 'payments.items.menuItem']),
         ]);
     }
 
@@ -119,6 +119,41 @@ class PaymentController extends Controller
         // Mismo saldo cubierto → mismo destino final que `close`: `show`
         // solo acepta órdenes no `pagada` (ver arriba), así que quedarse en
         // pantalla ya no es una opción una vez cerrada la cuenta.
+        return $order->status === OrderStatus::Pagada
+            ? to_route('mesas.index')
+            : to_route('cobro.show', $table);
+    }
+
+    /**
+     * Registra un pago cuyo monto se calcula sumando un grupo de
+     * `OrderItem`s seleccionados (REDEV-29, split por ítems —
+     * _ai/specs/division-de-cuenta.spec.md, "Ampliación"). A diferencia de
+     * `addPayment`, no recibe `amount`: el monto nunca viene del cliente.
+     *
+     * F-03: mismo criterio que `close`/`addPayment` — `collected_by`
+     * siempre `$request->user()`.
+     */
+    public function addPaymentByItems(Request $request, Table $table, AddPaymentToOrderAction $action): RedirectResponse
+    {
+        $data = $request->validate([
+            'item_ids' => ['required', 'array', 'min:1'],
+            'item_ids.*' => ['integer', 'distinct'],
+            'method' => ['required', Rule::enum(PaymentMethod::class)],
+        ]);
+
+        $order = $table->orders()
+            ->whereIn('status', [
+                OrderStatus::Abierta,
+                OrderStatus::EnviadaCocina,
+                OrderStatus::Lista,
+                OrderStatus::PorCobrar,
+                OrderStatus::Pagada,
+            ])
+            ->latest()
+            ->firstOrFail();
+
+        $order = $action->handleForItems($order, $data['item_ids'], PaymentMethod::from($data['method']), $request->user());
+
         return $order->status === OrderStatus::Pagada
             ? to_route('mesas.index')
             : to_route('cobro.show', $table);
