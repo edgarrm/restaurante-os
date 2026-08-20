@@ -283,3 +283,41 @@ sin acoplarse. Ver `_ai/specs/division-de-cuenta.spec.md`, sección
 arquitectura, un bug de carrera encontrado en code review (no en
 verificación visual) y corregido, y la verificación completa. Suite: 233
 tests, 229 passed, 4 skipped, 0 fallos.
+
+**2026-08-20 — Backlog abierto (auditoría de continuidad, ningún spec
+nuevo pendiente).** Los 12 specs de `_ai/docs/spec-registry.md` (#0-#9,
+#12, #13) están `✅ Implemented` — **no hay ningún spec en `_ai/specs/` a
+medio implementar ni en Draft/Review**. Lo que queda es deuda técnica y
+decisiones ya documentadas, no specs nuevos:
+
+1. **Bug 404 en Cobro** — `POST /mesas/{table}/cobro` devolvía 404 para
+   una mesa en status `por_cobrar` en el tenant demo (Mesa 3, id 4).
+   Detectado en REDEV-27, reproducido de nuevo en REDEV-29. No
+   investigado a fondo; follow-up creado en Linear (ver `decision-log.md`,
+   entradas REDEV-27 y REDEV-29).
+2. **Reservas: transiciones de estado faltantes** — `Reservation` no tiene
+   endpoint ni control en UI para pasar a `sentada`/`cancelada` (brecha en
+   `_ai/specs/reservas.spec.md`, #8; ver decision-log, PASO 0 de #8).
+3. **Toma de Pedido: editar/quitar ítems de la cuenta** — brecha de
+   contrato en `_ai/specs/toma-de-pedido.spec.md` (#5), dejada fuera de
+   alcance a propósito (ver decision-log, entrada 2026-08-11).
+4. **F-07 del threat model** — bloqueo de tablet desatendida: decisión de
+   producto pendiente del cliente ancla, no técnica (ver decision-log,
+   2026-08-10).
+5. **Gestión de Staff** — tests Pest y lint/types en verde, pero falta
+   verificación visual en browser real (click-through completo).
+6. **Passkeys/WebAuthn** — pendiente revisitar si el cliente ancla o un
+   piloto lo pide (ver `ADR-003`, sección "Pendiente — Passkeys").
+7. Deuda menor diferida (no defectos): duplicación de la query de lookup
+   de orden y del selector "Método de pago" entre los dos modos de
+   `Cobro.vue` — candidatas a extracción si se agrega un tercer modo de
+   split.
+
+Housekeeping: la rama local `División-de-cuenta` ya está fusionada a
+`main` (sin commits propios) y no existe en `origin` — se puede borrar
+con `git branch -d División-de-cuenta` sin pérdida.
+
+Ninguno de estos bloquea operar el MVP. Para elegir el siguiente trabajo,
+partir de esta lista + `decision-log.md`; ninguno tiene spec propio
+todavía, así que la siguiente sesión debe empezar por PASO 0 (spec) del
+punto elegido, no saltar directo a código.
