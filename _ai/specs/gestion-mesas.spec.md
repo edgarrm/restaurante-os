@@ -36,8 +36,8 @@ toma de pedidos.
 |-----------|------------------------|
 | Nombre de mesa duplicado | Permitido — no hay restricción de unicidad de nombre (dos "Mesa Terraza 1" en zonas distintas es un caso real); si se vuelve un problema en piloto, se revisita |
 | Editar una mesa que tiene una orden `abierta` | Permitido editar nombre/capacidad; no afecta la orden en curso |
-| Intentar eliminar una mesa con una orden `abierta` o `enviada_cocina` | Bloqueado — "No se puede eliminar una mesa con una cuenta activa." |
-| Eliminar una mesa sin órdenes activas | Eliminación permitida (soft delete recomendado para no romper el historial de órdenes pasadas vía FK) |
+| Intentar eliminar una mesa con una orden `abierta`, `enviada_cocina`, `lista` o `por_cobrar` | Bloqueado — "No se puede eliminar una mesa con una cuenta activa." (`lista`/`por_cobrar` también bloquean: son dinero pendiente de cobrar, no solo "orden en curso" — corregido tras REDEV-33, ver decision-log) |
+| Eliminar una mesa sin órdenes con cuenta viva (solo `pagada`/`cancelada`, o sin órdenes) | Eliminación permitida (soft delete recomendado para no romper el historial de órdenes pasadas vía FK) |
 | Capacidad en 0 o negativa | Rechazado por validación — capacidad mínima 1 |
 | Primer uso del restaurante (cero mesas creadas) | El mapa de mesas muestra un estado vacío guiando al admin a crear mesas aquí |
 
@@ -68,7 +68,7 @@ toma de pedidos.
 - [x] `CreateTableAction`: crea una mesa con `status=libre` por defecto
 - [x] `UpdateTableAction`: actualiza nombre/capacidad sin afectar `status`
 - [x] `DeleteTableAction`: lanza excepción de dominio si la mesa tiene una orden
-      `abierta` o `enviada_cocina`
+      `abierta`, `enviada_cocina`, `lista` o `por_cobrar`
 - [x] `CreateTableAction`: capacidad ≤ 0 lanza error de validación
 
 ### Integration Tests

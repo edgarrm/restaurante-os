@@ -30,6 +30,8 @@ test('lanza excepción de dominio si la mesa tiene una orden activa y no la elim
 })->with([
     'abierta' => OrderStatus::Abierta,
     'enviada_cocina' => OrderStatus::EnviadaCocina,
+    'lista' => OrderStatus::Lista,
+    'por_cobrar' => OrderStatus::PorCobrar,
 ]);
 
 test('permite eliminar la mesa si sus órdenes ya no están activas', function (OrderStatus $status) {

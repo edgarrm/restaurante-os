@@ -1418,3 +1418,83 @@ regresiones nuevas.
 No se hizo merge a `main` — rama
 `realmoraleslabs/redev-29-division-de-cuenta-por-items` (issue REDEV-29)
 queda lista para revisión manual, según pide el ticket.
+
+### 2026-08-25 — REDEV-33: causa raíz del 404 en Cobro investigada y corregida
+(resuelve el punto 1 del backlog abierto de `_ai/CONTEXT.md`, 2026-08-20)
+
+Investigado a fondo (agente Explore, solo lectura) el 404 en `POST
+/mesas/{table}/cobro` reproducido en REDEV-27 y de nuevo en REDEV-29 para
+Mesa 3 (id 4, tenant demo, status `por_cobrar`), nunca investigado hasta
+ahora. **No es un bug en `PaymentController`** — su comportamiento (404
+cuando no hay orden recuperable) es exactamente el que documenta
+`_ai/specs/cobro.spec.md`.
+
+**Causa raíz real, confirmada en código:**
+`app/Actions/Tables/DeleteTableAction.php` solo bloqueaba el borrado de una
+mesa si tenía una orden `abierta` o `enviada_cocina` — **no** `lista` ni
+`por_cobrar`. `Table` usa `SoftDeletes` sin `resolveRouteBinding()` custom,
+así que el binding implícito de `{table}` en `routes/tenant.php` excluye
+mesas borradas: cualquier request a una mesa borrada con una cuenta
+pendiente de cobro devuelve 404 directo en el enrutador, antes de que
+`PaymentController` corra una sola línea — exactamente lo reportado. Era
+un vacío original del propio spec (`_ai/specs/gestion-mesas.spec.md`, Edge
+Cases) y de su test (`DeleteTableActionTest`), no un desvío de
+implementación: `lista`/`por_cobrar` nunca se probaron ni como bloqueantes
+ni como permitidas. `CobroTest.php` seguía en verde porque su helper crea
+`Table`+`Order` siempre consistentes bajo `RefreshDatabase` — el escenario
+de datos huérfanos solo puede ocurrir en el tenant demo, manipulado a mano
+entre sesiones que comparten el mismo `database.sqlite`.
+
+**Hipótesis alternativa no descartable sin la BD real** (mismo síntoma,
+mismo origen "data drift" del tenant demo compartido): que el `Order` en
+sí se haya borrado físicamente por tinker (`Order` no tiene `SoftDeletes`,
+y ninguna Action recalcula `Table.status` al leer, solo lo fija
+imperativamente en momentos puntuales) — en ese caso el 404 ocurriría
+dentro del controller (`firstOrFail()`), no en el binding de ruta. No se
+pudo confirmar cuál de las dos ocurrió porque ni este checkout de `main`
+ni el worktree del agente tenían `database.sqlite`/`.env` — el dato
+huérfano real del tenant demo, si sigue vivo en algún entorno, requiere
+una corrección de datos aparte (`Table::withTrashed()->find(4)` para
+confirmar), fuera del alcance de este fix de código.
+
+**Fix:** `DeleteTableAction::handle()` ahora bloquea el borrado también
+para `lista`/`por_cobrar` (los 4 estados que representan una cuenta viva,
+todo salvo `pagada`/`cancelada`) — antes era posible borrar una mesa con
+una cuenta pendiente de cobro sin ningún aviso, perdiendo el acceso a su
+cobro. Actualizado en conjunto: `_ai/specs/gestion-mesas.spec.md` (Edge
+Cases + Unit Tests, mismo criterio ya usado en spec-registry para
+mantener specs y código sincronizados), `DeleteTableActionTest.php`
+(dataset de bloqueo ampliado a los 4 estados) y `GestionMesasTest.php`
+(mismo dataset a nivel de request `DELETE /mesas/gestion/{table}` → 422).
+No se tocó `PaymentController` ni el enrutador — su 404 es correcto y ya
+documentado; el bug estaba upstream, en qué mesas se dejaban borrar.
+
+**Entorno de esta sesión:** el checkout de `main` no tenía `vendor/`,
+`node_modules/`, `.env` ni `database.sqlite` (a diferencia de sesiones
+anteriores en worktrees, que sí compartían `.env`/sqlite vía symlink con
+`main` — aquí no había nada que symlinkear). Se corrió `composer install`
+y `npm install` reales, se generó `.env`/`APP_KEY` y un
+`database.sqlite` vacío nuevos (sin datos del tenant demo). El sitio Herd
+de este proyecto está configurado en PHP 8.1, pero `composer.json` exige
+`^8.3` — se usó el binario `php85` de Herd directamente para Artisan/Pint,
+y una carpeta con un symlink `php → php85` antepuesta al `PATH` solo para
+el subproceso de `npm run build` (el plugin de Wayfinder invoca `php`
+como comando fijo). No se tocó la configuración del sitio en Herd.
+
+**Verificado con:** `php artisan test --compact --filter=DeleteTableActionTest`
+(7/7, antes 5/5) y `--filter=GestionMesasTest` (10/10, antes 8/8) en rojo→verde;
+suite completa antes de `npm run build` (238 tests, 228 passed, 6 fallos —
+los 6 preexistentes por `ViteManifestNotFoundException`, nada relacionado
+a este cambio) y después (238 tests, 234 passed, 4 skipped, 0 fallos —
+coincide exactamente con el baseline post-REDEV-29 de `_ai/CONTEXT.md` más
+los 4 casos nuevos, todos en verde); `vendor/bin/pint --dirty --format agent`
+sin cambios pendientes. Sin verificación visual en browser real ni
+corrección del dato huérfano del tenant demo en esta sesión (sin acceso a
+esos datos reales, ver arriba) — pendiente para cuando se retome un
+entorno con el tenant demo real.
+
+No se hizo commit — cambios en el working tree de `main`
+(`app/Actions/Tables/DeleteTableAction.php`,
+`_ai/specs/gestion-mesas.spec.md`, `tests/Unit/Actions/Tables/
+DeleteTableActionTest.php`, `tests/Feature/GestionMesasTest.php`),
+pendientes de que el usuario pida commit/branch.

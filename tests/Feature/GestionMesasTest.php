@@ -58,6 +58,8 @@ test('DELETE /mesas/gestion/{table} con orden activa devuelve 422 y no elimina l
 })->with([
     'abierta' => OrderStatus::Abierta,
     'enviada_cocina' => OrderStatus::EnviadaCocina,
+    'lista' => OrderStatus::Lista,
+    'por_cobrar' => OrderStatus::PorCobrar,
 ]);
 
 test('DELETE /mesas/gestion/{table} sin órdenes activas elimina la mesa', function () {

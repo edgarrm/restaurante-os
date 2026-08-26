@@ -290,11 +290,15 @@ nuevo pendiente).** Los 12 specs de `_ai/docs/spec-registry.md` (#0-#9,
 medio implementar ni en Draft/Review**. Lo que queda es deuda técnica y
 decisiones ya documentadas, no specs nuevos:
 
-1. **Bug 404 en Cobro** — `POST /mesas/{table}/cobro` devolvía 404 para
-   una mesa en status `por_cobrar` en el tenant demo (Mesa 3, id 4).
-   Detectado en REDEV-27, reproducido de nuevo en REDEV-29. No
-   investigado a fondo; follow-up creado en Linear (ver `decision-log.md`,
-   entradas REDEV-27 y REDEV-29).
+1. ~~**Bug 404 en Cobro**~~ — **Corregido 2026-08-25 (REDEV-33).** Causa
+   raíz real: `DeleteTableAction` no bloqueaba el borrado de una mesa con
+   orden `lista`/`por_cobrar` (solo `abierta`/`enviada_cocina`); al ser
+   `Table` un modelo `SoftDeletes`, una mesa borrada con cuenta pendiente
+   de cobro devolvía 404 directo en el binding de ruta. Fix + specs/tests
+   actualizados, sin commit todavía (ver `decision-log.md`, entrada
+   REDEV-33). Pendiente: verificar/corregir el dato huérfano real del
+   tenant demo (Mesa 3, id 4) si sigue vivo en algún entorno — no se pudo
+   confirmar in situ, este checkout no tenía `database.sqlite`.
 2. **Reservas: transiciones de estado faltantes** — `Reservation` no tiene
    endpoint ni control en UI para pasar a `sentada`/`cancelada` (brecha en
    `_ai/specs/reservas.spec.md`, #8; ver decision-log, PASO 0 de #8).
