@@ -189,12 +189,20 @@ Route::middleware([
     // OrderItem/Payment, Reservation tiene su propio BelongsToTenant
     // (table_id es nullable, sin relación padre confiable de la que
     // heredar tenant) — ver Reservation.php.
+    //
+    // `sentar`/`cancelar` (cierre de la brecha #8, ver decision-log.md,
+    // 2026-08-25): mismo estilo kebab-case en español que
+    // `menu/{menuItem}/disponibilidad` y `staff/{user}/desactivar`;
+    // `{reservation}` usa route model binding normal, TenantScope resuelve
+    // F-05 igual que `{table}` en el grupo cobro.*.
     Route::middleware(['auth', 'role:admin,mesero'])
         ->prefix('reservas')
         ->name('reservas.')
         ->group(function () {
             Route::get('/', [ReservationController::class, 'index'])->name('index');
             Route::post('/', [ReservationController::class, 'store'])->name('store');
+            Route::patch('/{reservation}/sentar', [ReservationController::class, 'seat'])->name('seat');
+            Route::patch('/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('cancel');
         });
 
     // Inventario (_ai/specs/inventario.spec.md, #9, US-5.1/US-5.2, Should).

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Reservations\CancelReservationAction;
 use App\Actions\Reservations\CreateReservationAction;
+use App\Actions\Reservations\SeatReservationAction;
+use App\Exceptions\Reservations\InvalidReservationTransitionException;
 use App\Exceptions\Reservations\PastReservationException;
 use App\Models\Reservation;
 use App\Models\Table;
@@ -73,6 +76,42 @@ class ReservationController extends Controller
             // de Toma de Pedido y Cobro).
             throw ValidationException::withMessages([
                 'reserved_at' => $exception->getMessage(),
+            ]);
+        }
+
+        return to_route('reservas.index');
+    }
+
+    /**
+     * Marca la reserva `sentada` — el cliente llegó (Happy Path #5, cierre
+     * de la brecha #8, ver decision-log.md 2026-08-25). Sin Gate::authorize
+     * — el spec no pide reglas de autorización adicionales, igual que
+     * `index`/`store`; `role:admin,mesero` en la ruta ya resuelve F-06.
+     */
+    public function seat(Reservation $reservation, SeatReservationAction $action): RedirectResponse
+    {
+        try {
+            $action->handle($reservation);
+        } catch (InvalidReservationTransitionException $exception) {
+            throw ValidationException::withMessages([
+                'status' => $exception->getMessage(),
+            ]);
+        }
+
+        return to_route('reservas.index');
+    }
+
+    /**
+     * Marca la reserva `cancelada` (Happy Path #5, cierre de la brecha #8,
+     * ver decision-log.md 2026-08-25).
+     */
+    public function cancel(Reservation $reservation, CancelReservationAction $action): RedirectResponse
+    {
+        try {
+            $action->handle($reservation);
+        } catch (InvalidReservationTransitionException $exception) {
+            throw ValidationException::withMessages([
+                'status' => $exception->getMessage(),
             ]);
         }
 

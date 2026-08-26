@@ -119,3 +119,72 @@ test('F-05: asignar table_id de una mesa de otro restaurante a una reserva falla
     $response->assertNotFound();
     expect(Reservation::count())->toBe(0);
 });
+
+test('PATCH /reservas/{reservation}/sentar marca la reserva sentada', function () {
+    $reservation = Reservation::factory()->for($this->tenant, 'tenant')->create([
+        'status' => ReservationStatus::Confirmada,
+    ]);
+
+    $response = $this->actingAs($this->mesero)->patch(route('reservas.seat', $reservation));
+
+    $response->assertRedirect(route('reservas.index'));
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Sentada);
+});
+
+test('PATCH /reservas/{reservation}/sentar sobre una reserva cancelada devuelve 422', function () {
+    $reservation = Reservation::factory()->for($this->tenant, 'tenant')->create([
+        'status' => ReservationStatus::Cancelada,
+    ]);
+
+    $response = $this->actingAs($this->mesero)->patchJson(route('reservas.seat', $reservation));
+
+    $response->assertStatus(422);
+    expect($response->json('errors.status.0'))->toBe('No se puede sentar una reserva cancelada.')
+        ->and($reservation->fresh()->status)->toBe(ReservationStatus::Cancelada);
+});
+
+test('PATCH /reservas/{reservation}/cancelar marca la reserva cancelada', function () {
+    $reservation = Reservation::factory()->for($this->tenant, 'tenant')->create([
+        'status' => ReservationStatus::Confirmada,
+    ]);
+
+    $response = $this->actingAs($this->mesero)->patch(route('reservas.cancel', $reservation));
+
+    $response->assertRedirect(route('reservas.index'));
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelada);
+});
+
+test('PATCH /reservas/{reservation}/cancelar sobre una reserva sentada devuelve 422', function () {
+    $reservation = Reservation::factory()->for($this->tenant, 'tenant')->create([
+        'status' => ReservationStatus::Sentada,
+    ]);
+
+    $response = $this->actingAs($this->mesero)->patchJson(route('reservas.cancel', $reservation));
+
+    $response->assertStatus(422);
+    expect($response->json('errors.status.0'))->toBe('No se puede cancelar una reserva que ya fue sentada.')
+        ->and($reservation->fresh()->status)->toBe(ReservationStatus::Sentada);
+});
+
+test('usuario con role=cocina accede a sentar/cancelar → 403', function () {
+    $cocina = User::factory()->for($this->tenant, 'tenant')->cocina()->create();
+    $reservation = Reservation::factory()->for($this->tenant, 'tenant')->create([
+        'status' => ReservationStatus::Confirmada,
+    ]);
+
+    $this->actingAs($cocina)->patch(route('reservas.seat', $reservation))->assertForbidden();
+    $this->actingAs($cocina)->patch(route('reservas.cancel', $reservation))->assertForbidden();
+});
+
+test('F-05: sentar/cancelar una reserva de otro restaurante devuelve 404 y no la modifica', function () {
+    $tenantB = Tenant::create(['name' => 'Restaurante B']);
+    Domain::create(['tenant_id' => $tenantB->getTenantKey(), 'domain' => 'restaurante-b.test']);
+    $reservationB = Reservation::factory()->for($tenantB, 'tenant')->create([
+        'status' => ReservationStatus::Confirmada,
+    ]);
+
+    $this->actingAs($this->mesero)->patch(route('reservas.seat', $reservationB))->assertNotFound();
+    $this->actingAs($this->mesero)->patch(route('reservas.cancel', $reservationB))->assertNotFound();
+
+    expect($reservationB->fresh()->status)->toBe(ReservationStatus::Confirmada);
+});
