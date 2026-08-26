@@ -331,8 +331,21 @@ decisiones ya documentadas, no specs nuevos:
    limpia. Sin bugs — la implementación coincide con el spec. Sin cambios
    de código. Ver `decision-log.md`, entrada "Verificación visual en
    browser real de Gestión de Staff (#3)".
-6. **Passkeys/WebAuthn** — pendiente revisitar si el cliente ancla o un
-   piloto lo pide (ver `ADR-003`, sección "Pendiente — Passkeys").
+6. ~~**Passkeys/WebAuthn** — pendiente revisitar si el cliente ancla o un
+   piloto lo pide~~ — **Resuelto 2026-08-26.** Implementado como método de
+   login adicional (email+contraseña sigue funcionando igual): registro y
+   revocación desde `/settings/passkeys`, "Ingresar con passkey" en
+   `/login`. Hallazgo de seguridad no trivial cerrado en el mismo trabajo:
+   el Relying Party ID de WebAuthn quedaba atado al dominio base compartido
+   entre tenants (`config('app.url')`), lo que habría permitido que el
+   navegador ofreciera/validara passkeys de un tenant en el subdominio de
+   otro — resuelto con `App\Http\Middleware\ScopePasskeysToTenantDomain`,
+   que ata el RP ID al subdominio real de cada petición. Ver
+   `_ai/specs/passkeys.spec.md`, `ADR-003` (sección "Passkeys, resuelto") y
+   `decision-log.md`, entrada 2026-08-26. Verificación visual parcial —
+   ceremonia WebAuthn completa no verificable con `claude-in-chrome` en
+   este entorno (límite documentado de antemano, no bloqueo nuevo). Rama
+   `feature/passkeys-webauthn`, sin merge a `main`.
 7. ~~Deuda menor diferida (no defectos): duplicación de la query de lookup
    de orden y del selector "Método de pago" entre los dos modos de
    `Cobro.vue`~~ — **Resuelto 2026-08-25.** Query extraída a

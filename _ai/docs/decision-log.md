@@ -1768,3 +1768,91 @@ Archivos: `app/Http/Controllers/PaymentController.php`,
 `resources/js/components/PaymentMethodSelector.vue` (nuevo),
 `resources/js/lib/paymentMethods.ts` (nuevo). Rama
 `refactor/cobro-duplicacion-query-metodo-pago`.
+
+### 2026-08-26 — Passkeys/WebAuthn implementado (resuelve el punto 6 del
+backlog abierto de `_ai/CONTEXT.md`, ADR-003 "Pendiente — Passkeys")
+
+Decisión de producto del dueño del proyecto: passkeys como método de login
+**adicional**, no reemplazo de email+contraseña. Encaja con "staff
+productivo sin entrenamiento" y con que las tablets del piso son
+compartidas (un autenticador de plataforma soporta varias credenciales por
+dispositivo — cada miembro de staff registra la suya, F-03 no se rompe).
+Spec completo en `_ai/specs/passkeys.spec.md`, PASO 0 documenta la mecánica
+completa; esta entrada se enfoca en el hallazgo de seguridad que vale la
+pena que quede indexado aparte del spec.
+
+**Corrección a una nota de un intento previo abortado:** ese intento (sin
+código, solo una nota) afirmaba "`passkeys.middleware` usa
+`config('fortify.middleware', ['web'])`". Verificado: el resultado final es
+correcto, pero el mecanismo real no está donde la nota sugería. El paquete
+`laravel/passkeys` en aislamiento trae su propio `config/passkeys.php` con
+`'middleware' => ['web']` a secas — sin ninguna referencia a Fortify. Lo que
+realmente ata ambos configs es que `laravel/fortify` v1.37 trae integración
+nativa con `laravel/passkeys`: en su propio
+`FortifyServiceProvider::configurePasskeys()`, llama
+`Passkeys::ignoreRoutes()` de forma incondicional, registra las rutas él
+mismo (reutilizando los controllers del paquete tal cual) dentro del mismo
+`Route::group(['middleware' => config('fortify.middleware')])` que envuelve
+`/login`, y sobreescribe `config(['passkeys.middleware' =>
+config('fortify.middleware', ['web'])])`. Como `config('fortify.middleware')`
+ya estaba hardenizado para F-01 (`InitializeTenancyByDomain`,
+`PreventAccessFromCentralDomains`, `ScopeSessions`), el aislamiento de
+tenant a nivel de datos para las rutas de passkeys quedó resuelto
+automáticamente en cuanto se habilitó `Features::passkeys()` — publicar
+`config/passkeys.php` y editarlo a mano (primer intento de esta sesión)
+resultó ser trabajo muerto, revertido, porque Fortify sobreescribe todas
+sus claves en su propio `boot()`.
+
+**El hallazgo real, sin resolver de fábrica:** WebAuthn ata cada credencial
+a un "Relying Party ID" en el momento del registro — Fortify deriva ese
+valor de `config('app.url')` (un único valor global, `http://localhost:8000`
+en este repo — que además es una entrada de `tenancy.central_domains`). En
+un setup multi-tenant por subdominio, un RP ID igual al dominio base hace
+que CUALQUIER subdominio sea "same site" para ese RP ID — el navegador
+ofrecería/validaría passkeys de un tenant distinto al visitar el subdominio
+de otro, sin que ningún scoping del lado del servidor lo pueda arreglar
+después (la selección de credencial ocurre en el navegador/autenticador de
+plataforma, antes de que cualquier request llegue al servidor). Es un
+problema de protocolo específico de passkeys — no tiene equivalente en el
+login por contraseña, y por eso F-01 original no lo cubría.
+
+**Fix:** `App\Http\Middleware\ScopePasskeysToTenantDomain`, agregado a
+`config('fortify.middleware')`, sobreescribe en caliente
+`passkeys.relying_party_id`/`passkeys.allowed_origins` al host/origin exacto
+de cada petición (`$request->getHost()`/`getSchemeAndHttpHost()`) — válido
+según la spec de WebAuthn (RP ID igual al dominio exacto del origen siempre
+se acepta) y hace que el aislamiento entre tenants ocurra en la ceremonia
+criptográfica misma.
+
+**Gap secundario encontrado en runtime:** el bridge de Fortify deja
+`passkeys.throttle` en `null` (sin límite) a menos que exista un limiter
+Fortify llamado `passkeys` — el default `throttle:6,1` del paquete crudo no
+sobrevive una vez que Fortify toma el control. Se registró explícitamente
+(`RateLimiter::for('passkeys', ...)`, 6/min por IP) para no perder ese
+límite.
+
+**Verificado con:** suite completa 262 tests, 258 passed, 4 skipped, 0
+failed (baseline 250/246/4/0 + 12 tests nuevos, sin regresiones);
+`vendor/bin/pint --dirty --format agent`, `npm run lint:check`,
+`npm run types:check` limpios. Verificación en browser real parcial
+(documentada en detalle en `_ai/specs/passkeys.spec.md`, Definition of
+Done): login y Settings renderizan correcto en dark/light, el flujo hasta
+`navigator.credentials.create()/get()` se dispara sin error de JS y con las
+peticiones de opciones respondiendo 200 (confirma auth + `password.confirm`
++ RP-ID scoping funcionando end-to-end); la ceremonia WebAuthn completa no
+es completable por `claude-in-chrome` en este entorno (sin autenticador de
+plataforma ni virtual authenticator de CDP) — límite documentado de
+antemano en el encargo, no un bloqueo nuevo.
+
+Archivos principales: `app/Models/User.php`, `app/Actions/Fortify/
+AuthorizePasskeyLogin.php` (nuevo), `app/Http/Middleware/
+ScopePasskeysToTenantDomain.php` (nuevo), `app/Http/Responses/
+LoginResponse.php`, `app/Providers/FortifyServiceProvider.php`,
+`app/Http/Controllers/Settings/PasskeysController.php` (nuevo),
+`config/fortify.php`, `routes/settings.php`, `resources/js/lib/
+passkeys.ts` (nuevo), `resources/js/pages/settings/Passkeys.vue` (nuevo),
+`resources/js/pages/auth/Login.vue`, `resources/js/layouts/settings/
+Layout.vue`, `database/migrations/2026_08_26_091449_create_passkeys_table
+.php` (nuevo, del paquete). Tests: `tests/Unit/Actions/Fortify/
+AuthorizePasskeyLoginTest.php`, `tests/Unit/PasskeyCrossTenantScopeTest.php`,
+`tests/Feature/PasskeysTest.php`. Rama `feature/passkeys-webauthn`.

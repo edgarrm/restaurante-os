@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -8,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { isPasskeySupported, loginWithPasskey, PasskeyError } from '@/lib/passkeys';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -22,6 +24,22 @@ defineProps<{
     status?: string;
     canResetPassword: boolean;
 }>();
+
+const supportsPasskeys = isPasskeySupported();
+const usingPasskey = ref(false);
+const passkeyError = ref<string | null>(null);
+
+async function onPasskeyLogin(): Promise<void> {
+    passkeyError.value = null;
+    usingPasskey.value = true;
+
+    try {
+        await loginWithPasskey();
+    } catch (error) {
+        passkeyError.value = error instanceof PasskeyError ? error.message : 'No fue posible iniciar sesión con passkey.';
+        usingPasskey.value = false;
+    }
+}
 </script>
 
 <template>
@@ -32,6 +50,30 @@ defineProps<{
         class="mb-4 text-center text-sm font-medium text-green-600"
     >
         {{ status }}
+    </div>
+
+    <div v-if="passkeyError" class="mb-4 text-center text-sm font-medium text-destructive">
+        {{ passkeyError }}
+    </div>
+
+    <div v-if="supportsPasskeys" class="mb-6">
+        <Button
+            type="button"
+            variant="outline"
+            class="w-full"
+            :disabled="usingPasskey"
+            data-test="login-with-passkey-button"
+            @click="onPasskeyLogin"
+        >
+            <Spinner v-if="usingPasskey" />
+            Ingresar con passkey
+        </Button>
+
+        <div class="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <span class="h-px flex-1 bg-border" />
+            o con tu contraseña
+            <span class="h-px flex-1 bg-border" />
+        </div>
     </div>
 
     <Form

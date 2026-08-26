@@ -60,21 +60,36 @@ MVP; se puede introducir después si el negocio lo pide explícitamente.
 - El middleware de rutas debe verificar `role` explícitamente por grupo de rutas
   (`/cocina/*` solo accesible a `role=cocina` o `admin`)
 
-## Pendiente — Passkeys (no decidido)
+## Passkeys (resuelto, 2026-08-26)
 `laravel/fortify` v1.37 trae `laravel/passkeys` (WebAuthn) como dependencia
-directa — viene instalado, sin que nadie lo haya pedido explícitamente
+directa — venía instalado, sin que nadie lo hubiera pedido explícitamente
 (encontrado en auditoría del 2026-08-10, `composer why laravel/passkeys`).
 
-Es relevante para el producto, no solo trivia de dependencias: el
-diferenciador central es "staff productivo sin entrenamiento" — login sin
-contraseña (un dispositivo/tablet reconocido, o biometría) podría reducir aún
-más la fricción de que un mesero nuevo empiece a usar el sistema. También
-podría ser ruido que no aporta nada a la escala de una tablet compartida en
-el piso de un restaurante.
+**Decisión:** implementado como método de login **adicional**, no como
+reemplazo de email+contraseña — encaja con "staff productivo sin
+entrenamiento" (Face ID/Touch ID/PIN del SO reduce fricción de login) y con
+que las tablets del piso son compartidas (un autenticador de plataforma
+soporta múltiples credenciales por dispositivo, cada miembro de staff
+registra la suya — F-03 no se rompe). Detalle completo de la mecánica
+(qué trae el paquete de fábrica, qué se construyó, y el hallazgo de
+seguridad específico de WebAuthn para multi-tenancy) en
+`_ai/specs/passkeys.spec.md`.
 
-**No implementado, no descartado.** Se necesita una decisión explícita antes
-de la Fase 06 (Implementation) de `gestion-staff.spec.md` — hoy ese spec no
-lo menciona.
+**Hallazgo de seguridad no trivial, digno de nota aquí:** a diferencia del
+login por contraseña, WebAuthn ata cada credencial a un "Relying Party ID"
+en el momento del registro — por defecto derivado de `config('app.url')`
+(un único valor global), que en este setup multi-tenant por subdominio
+haría que el navegador ofreciera/validara passkeys de un tenant distinto en
+el subdominio de otro (RP ID compartido = "same site" para todos los
+subdominios). Se resolvió con un middleware nuevo
+(`App\Http\Middleware\ScopePasskeysToTenantDomain`) que ata el RP ID al
+subdominio real de cada petición — el aislamiento entre tenants ocurre en
+la ceremonia criptográfica misma, no solo en el servidor. Ver
+decision-log.md, entrada 2026-08-26.
+
+**Implementado:** `_ai/specs/passkeys.spec.md` (spec completo), UI de
+registro/gestión/revocación en `/settings/passkeys`, opción "Ingresar con
+passkey" en `/login`, 12 tests nuevos (incluye F-05 cross-tenant).
 
 ## Related
 - ADR-001: Monolito — auth por sesión, no token, porque no hay cliente API externo

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\PasskeysController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -22,6 +23,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    // Passkeys (_ai/specs/passkeys.spec.md): mismo patrón que
+    // `settings/security` — RequirePassword a nivel de ruta, así el
+    // registro/borrado (contra las rutas propias de `laravel/passkeys`,
+    // gateadas con `password.confirm`) no pide una segunda confirmación
+    // mientras el usuario sigue en esta página.
+    Route::get('settings/passkeys', [PasskeysController::class, 'edit'])
+        ->middleware(RequirePassword::class)
+        ->name('passkeys.edit');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
 });
