@@ -15,3 +15,8 @@ That JSON response is NOT a "valid Inertia response" to `Inertia\Testing\Asserta
 Separately: a POST/PATCH with invalid data against an Inertia route redirects 302 with flashed session errors, not 422 — that's Inertia's normal validation-error UX, not a bug. Use `postJson()`/`patchJson()` (Accept: application/json) instead of `post()`/`patch()` when a test needs to assert `422`.
 
 Precedent: `tests/Feature/GestionMenuTest.php` (_ai/specs/gestion-menu.spec.md, #2).
+
+## POST /mesas/{table}/cobro, .../pagos, .../pagos/por-items now require a verified PIN (F-07)
+Since `_ai/specs/bloqueo-tablet-pin.spec.md`, these 3 endpoints run the `payment-pin` middleware (`EnsurePaymentPinVerified`) before the controller: a mesero/admin with no `pin_hash` gets `ValidationException(['pin_not_set' => ...])`, and one with a `pin_hash` but no fresh `pin_verified_at` in the session gets `ValidationException(['pin' => ...])`. Any Feature test that POSTs to these routes and isn't specifically about the PIN gate needs to simulate an already-configured, already-verified user, or it 422s with no `Payment` created — same failure mode as forgetting `role:admin,mesero`.
+
+Fix, same pattern as `tests/Feature/CobroTest.php`/`DivisionDeCuentaTest.php`: create the mesero with `User::factory()->...->withPaymentPin()->create()` (factory state, `database/factories/UserFactory.php`) and call `$this->withSession(['pin_verified_at' => now()->timestamp])` once in `beforeEach` before any request. `withSession()` persists for every subsequent `$this->get()/post()` call in the same test method — no need to repeat it per test or per `actingAs()` swap.
