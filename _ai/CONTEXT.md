@@ -312,10 +312,17 @@ decisiones ya documentadas, no specs nuevos:
    verificación visual en browser real (click-through completo).
 6. **Passkeys/WebAuthn** — pendiente revisitar si el cliente ancla o un
    piloto lo pide (ver `ADR-003`, sección "Pendiente — Passkeys").
-7. Deuda menor diferida (no defectos): duplicación de la query de lookup
+7. ~~Deuda menor diferida (no defectos): duplicación de la query de lookup
    de orden y del selector "Método de pago" entre los dos modos de
-   `Cobro.vue` — candidatas a extracción si se agrega un tercer modo de
-   split.
+   `Cobro.vue`~~ — **Resuelto 2026-08-25.** Query extraída a
+   `PaymentController::resolveOrderForCobro()`; selector extraído a
+   `resources/js/components/PaymentMethodSelector.vue` (opciones movidas a
+   `resources/js/lib/paymentMethods.ts`). Refactor puro, sin cambio de
+   comportamiento — suite completa sigue en 238/234/4/0. Ver
+   `decision-log.md`, entrada 2026-08-25. Verificación visual bloqueada
+   por un problema de la extensión de Chrome en esta sesión (ver la misma
+   entrada) — evidencia de no-regresión se apoya en tests + lint/types +
+   build en verde.
 
 Housekeeping: la rama local `División-de-cuenta` ya está fusionada a
 `main` (sin commits propios) y no existe en `origin` — se puede borrar
