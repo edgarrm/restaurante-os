@@ -308,8 +308,14 @@ decisiones ya documentadas, no specs nuevos:
 4. **F-07 del threat model** — bloqueo de tablet desatendida: decisión de
    producto pendiente del cliente ancla, no técnica (ver decision-log,
    2026-08-10).
-5. **Gestión de Staff** — tests Pest y lint/types en verde, pero falta
-   verificación visual en browser real (click-through completo).
+5. ~~**Gestión de Staff — falta verificación visual**~~ — **Verificado
+   2026-08-25.** Click-through completo en browser real (`demo.localhost`,
+   `php artisan serve`): 3 cuentas creadas desde la UI (mesero/cocina),
+   edge case de email duplicado, "Editar rol", "Desactivar" con diálogo de
+   confirmación, login bloqueado tras desactivar, light/dark mode, consola
+   limpia. Sin bugs — la implementación coincide con el spec. Sin cambios
+   de código. Ver `decision-log.md`, entrada "Verificación visual en
+   browser real de Gestión de Staff (#3)".
 6. **Passkeys/WebAuthn** — pendiente revisitar si el cliente ancla o un
    piloto lo pide (ver `ADR-003`, sección "Pendiente — Passkeys").
 7. Deuda menor diferida (no defectos): duplicación de la query de lookup

@@ -1498,3 +1498,111 @@ No se hizo commit — cambios en el working tree de `main`
 `_ai/specs/gestion-mesas.spec.md`, `tests/Unit/Actions/Tables/
 DeleteTableActionTest.php`, `tests/Feature/GestionMesasTest.php`),
 pendientes de que el usuario pida commit/branch.
+
+### 2026-08-25 — Verificación visual en browser real de Gestión de Staff (#3)
+(resuelve el punto 5 del backlog abierto de `_ai/CONTEXT.md`, 2026-08-20)
+
+**Estado:** 🟢 Verificada — click-through completo en browser real, sin
+bugs encontrados. La implementación (`resources/js/pages/staff/Index.vue`,
+Actions de `app/Actions/Staff/`, spec `gestion-staff.spec.md` #3) se
+comporta exactamente como documenta el spec. Sin cambios de código en
+esta sesión.
+
+**Entorno:** worktree fresco (sin `vendor`/`node_modules`/`.env`/db).
+`composer install` + `npm install` reales con el binario `php85` de Herd
+(el sitio Herd de este proyecto sigue fijado a PHP 8.1; `composer.json`
+exige `^8.3`), `.env`/`APP_KEY` nuevos, `database.sqlite` vacío,
+migraciones, y un tenant demo dado de alta vía `OnboardTenantAction` en
+tinker (única vía no-UI usada — la data de staff en sí se creó 100% desde
+la UI, como pide el ticket). `npm run build` con un symlink `php → php85`
+antepuesto al `PATH` solo para el subproceso que Wayfinder invoca.
+`php artisan serve --port=8011` (elegido para no chocar con otros
+`artisan serve` ya corriendo en 8000/8010/8012 de otras sesiones
+paralelas en esta misma máquina — ver hallazgo de entorno más abajo).
+
+**Click-through realizado (browser real vía `claude-in-chrome`,
+`demo.localhost:8011`, login `admin.qa@demo.test`):**
+1. **Crear cuenta** (Happy Path #3): 3 cuentas creadas desde el diálogo
+   "Nueva cuenta" — Juan Mesero (`role=mesero`), Maria Cocina
+   (`role=cocina`), Pedro Duplicado (`role=mesero` inicialmente). Cada una
+   aparece de inmediato en la lista con badges de rol y estado ("Activo").
+2. **Edge case — email duplicado** (spec, tabla Edge Cases): crear una
+   cuenta con el correo de Juan Mesero ya existente → error inline
+   "Ya existe una cuenta con este correo." (coincide textual con la tabla
+   de Error States del spec), formulario no se envía, lista sin cambios.
+   Corregido el correo → cuenta creada normalmente.
+3. **Editar rol** (Happy Path #5): cambiado el rol de Pedro Duplicado de
+   `mesero` a `cocina`. El diálogo muestra el texto "El cambio aplica en
+   la siguiente request de Pedro Duplicado" — surface explícito en la UI
+   de la decisión de producto documentada en el spec ("no hay
+   invalidación forzada de sesión en el MVP"). Guardado → badge de rol
+   actualizado en la lista sin recargar la página.
+4. **Desactivar** (Edge Case "eliminar cuenta con órdenes pasadas" →
+   desactivar en vez de eliminar): diálogo de confirmación
+   "¿Desactivar cuenta?" con el texto "Juan Mesero no podrá iniciar
+   sesión. El historial de órdenes se conserva intacto." Confirmado →
+   badge cambia a "Inactivo" y el botón "Desactivar" desaparece de esa
+   fila (solo "Editar rol" queda, `v-if="member.is_active"` documentado
+   en la sesión original funciona como se diseñó).
+5. **Login bloqueado tras desactivar** (Integration Test del spec, ya
+   cubierto por Pest pero verificado aquí también en HTTP real): login
+   con las credenciales de Juan Mesero (ya desactivado) →
+   "These credentials do not match our records." — confirma
+   `Fortify::authenticateUsing()` rechazando `is_active=false` en un
+   request real, no solo en test.
+6. **Light/dark mode**: `/staff` (lista + badges + botones) y el diálogo
+   "Nueva cuenta" verificados en ambos temas — contraste y legibilidad
+   correctos en los dos. Dark es el default de la app (confirmado en
+   todas las capturas previas de la sesión); light forzado vía
+   `localStorage.setItem('appearance','light')` + remover la clase `dark`
+   del `<html>`, mismo mecanismo que usa el toggle real de la app.
+7. **Consola del navegador**: `read_console_messages` sin errores en
+   ningún punto del flujo, y sin ninguno de los warnings de hidratación
+   documentados en REDEV-30 (`hydrat|mismatch|createProvider`) — barrido
+   explícito con ese patrón, cero resultados.
+
+**No verificado (fuera de alcance, no bloqueante):** el routing
+por-rol real (`role=mesero` ve solo `/mesas`, `role=cocina` ve solo
+`/cocina`) vía login real de cada cuenta creada — el spec marca
+explícitamente los E2E de navegación como no implementados en este spec
+("no hay pantalla Vue de `/staff` todavía... falta la pantalla real para
+un E2E de navegación", nota ya obsoleta en sí misma ya que la pantalla si
+existe desde la sesión de 2026-08-12, pero el punto de que el E2E de
+navegación no es parte del alcance de este spec se mantiene) y el
+control de acceso por rol a nivel de ruta ya está cubierto por
+`RoleMiddlewareTest`/tests de integración existentes, no por este spec.
+Se intentó igual como verificación extra pero se abandonó por el hallazgo
+de entorno de abajo, sin impacto en el DoD de esta tarea.
+
+**Hallazgo de entorno (nuevo, no relacionado a la app) — colisión de
+pestaña entre sesiones concurrentes de `claude-in-chrome`.** A media
+sesión, la pestaña de este agente empezó a mostrar contenido de otros
+`php artisan serve` corriendo en la misma máquina (`demo.localhost:8010`,
+`:8012` — otros worktrees/agentes en paralelo usando la misma extensión
+de Chrome del usuario): la URL cambiaba sola entre llamadas a
+`navigate`/`computer`, un grupo de pestañas completo desapareció una vez
+("No tab group exists for this session"), y un formulario de login se
+autocompletó/envió solo con credenciales que no eran las que se acababan
+de escribir. Es decir: la extensión de Chrome es un recurso compartido
+por proceso de usuario, no aislado por sesión de agente — dos agentes en
+paralelo pueden pisarse pestañas entre sí. Mitigación aplicada con éxito:
+cerrar la pestaña sospechosa y crear una nueva (`tabs_close_mcp` +
+`tabs_create_mcp`), confirmar el puerto/URL correcto con un `navigate`
+explícito antes de cada acción sensible, y agrupar los pasos críticos
+(login, cambio de tema) en un único `browser_batch` para minimizar la
+ventana de colisión — con eso se completó el punto 6 (light/dark mode)
+sin más interferencia. Ningún dato de este proyecto se vio afectado (la
+sesión ajena estaba en otro tenant/puerto); no se tocó ninguna pestaña ni
+dato de otra sesión más allá de cerrarla. Para la próxima sesión que use
+`claude-in-chrome` en paralelo con otras: verificar el tabId/URL después
+de cada llamada, no asumir que la pestaña sigue siendo la propia.
+
+**Verificado con:** `php artisan test --compact --filter=Staff` (21/21,
+sin cambios respecto al spec original) y suite completa (238 tests, 234
+passed, 4 skipped — coincide exactamente con el baseline de
+`_ai/CONTEXT.md`, sin regresiones); click-through descrito arriba en
+browser real (`demo.localhost:8011`, Herd `php85`, no Herd nginx —
+`php artisan serve` directo). Sin cambios de código, `git status` limpio
+salvo el `name` de `package-lock.json` reescrito por `npm install` al
+nombre del directorio del worktree (revertido, no es un cambio de
+dependencia real).
