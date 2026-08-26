@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { index as reservasIndex, store } from '@/routes/reservas';
+import { cancel, index as reservasIndex, seat, store } from '@/routes/reservas';
 import type { Reservation, ReservationStatus, Table } from '@/types';
 
 const { reservations, tables } = defineProps<{
@@ -49,10 +49,61 @@ const statusVariant: Record<ReservationStatus, 'secondary' | 'default' | 'destru
     cancelada: 'destructive',
 };
 
-// Las transiciones a sentada/cancelada no tienen endpoint todavía (fuera de
-// alcance de este spec, ver decision-log.md) — el status se muestra de solo
-// lectura, sin botones de acción.
 const tablesById = computed(() => new Map(tables.map((table) => [table.id, table])));
+
+// Transiciones de status (cierre de la brecha #8, ver decision-log.md,
+// 2026-08-25): solo `confirmada` puede pasar a `sentada`/`cancelada` (guard
+// del servidor en Seat/CancelReservationAction), así que los botones solo se
+// muestran para reservas `confirmada` — evita depender solo del guard del
+// servidor para la UX. Mismo patrón que `toggleItemAvailability` en
+// menu/Index.vue: sin useForm, `router.patch` directo con un guard de
+// "una transición a la vez" por reserva.
+const transitioningId = ref<number | null>(null);
+const transitionError = ref<string | null>(null);
+
+function seatReservation(reservation: Reservation) {
+    if (transitioningId.value !== null) {
+        return;
+    }
+
+    transitioningId.value = reservation.id;
+    transitionError.value = null;
+    router.patch(
+        seat.url(reservation.id),
+        {},
+        {
+            preserveScroll: true,
+            onError: (errors) => {
+                transitionError.value = errors.status ?? 'No se pudo sentar la reserva.';
+            },
+            onFinish: () => {
+                transitioningId.value = null;
+            },
+        },
+    );
+}
+
+function cancelReservation(reservation: Reservation) {
+    if (transitioningId.value !== null) {
+        return;
+    }
+
+    transitioningId.value = reservation.id;
+    transitionError.value = null;
+    router.patch(
+        cancel.url(reservation.id),
+        {},
+        {
+            preserveScroll: true,
+            onError: (errors) => {
+                transitionError.value = errors.status ?? 'No se pudo cancelar la reserva.';
+            },
+            onFinish: () => {
+                transitioningId.value = null;
+            },
+        },
+    );
+}
 
 function tableLabel(reservation: Reservation): string {
     const table = reservation.table_id ? tablesById.value.get(reservation.table_id) : null;
@@ -142,6 +193,8 @@ function submitCreate() {
             <Button @click="openCreate">Nueva reserva</Button>
         </div>
 
+        <p v-if="transitionError" class="text-sm text-destructive">{{ transitionError }}</p>
+
         <div
             v-if="reservations.length === 0"
             class="flex flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center"
@@ -178,6 +231,24 @@ function submitCreate() {
                     <Badge :variant="statusVariant[reservation.status]">
                         {{ statusLabel[reservation.status] }}
                     </Badge>
+                    <div v-if="reservation.status === 'confirmada'" class="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            :disabled="transitioningId === reservation.id"
+                            @click="seatReservation(reservation)"
+                        >
+                            Sentar
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            :disabled="transitioningId === reservation.id"
+                            @click="cancelReservation(reservation)"
+                        >
+                            Cancelar
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

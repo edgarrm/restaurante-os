@@ -301,9 +301,15 @@ decisiones ya documentadas, no specs nuevos:
    algún entorno — no se pudo confirmar in situ, este checkout no tenía
    `database.sqlite`; tampoco se hizo verificación visual en browser real
    del fix.
-2. **Reservas: transiciones de estado faltantes** — `Reservation` no tiene
-   endpoint ni control en UI para pasar a `sentada`/`cancelada` (brecha en
-   `_ai/specs/reservas.spec.md`, #8; ver decision-log, PASO 0 de #8).
+2. ~~**Reservas: transiciones de estado faltantes**~~ — **Corregido
+   2026-08-25.** `SeatReservationAction`/`CancelReservationAction` +
+   `PATCH /reservas/{reservation}/sentar`/`cancelar` + botones en
+   `reservas/Index.vue` (visibles solo para reservas `confirmada`). Guard:
+   solo `confirmada` → `sentada`/`cancelada`; repetir la misma transición
+   es idempotente; cruzar `sentada`↔`cancelada` → 422. Spec, tests (Unit +
+   Feature, incl. F-05) y verificación visual completos — ver
+   `decision-log.md`, entrada 2026-08-25 "Reservas: transiciones de estado".
+   Rama `feature/reservas-transiciones-estado`, commit propio.
 3. ~~**Toma de Pedido: editar/quitar ítems de la cuenta**~~ — **Nota
    corregida 2026-08-25: esta entrada estaba obsoleta.** La brecha
    documentada el 2026-08-11 (`decision-log.md`) se cerró el 2026-08-12 al

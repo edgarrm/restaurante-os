@@ -1498,3 +1498,88 @@ No se hizo commit — cambios en el working tree de `main`
 `_ai/specs/gestion-mesas.spec.md`, `tests/Unit/Actions/Tables/
 DeleteTableActionTest.php`, `tests/Feature/GestionMesasTest.php`),
 pendientes de que el usuario pida commit/branch.
+
+### 2026-08-25 — Reservas: transiciones de estado `sentada`/`cancelada` (cierra la brecha #8 del backlog abierto de `_ai/CONTEXT.md`, punto 2)
+**Estado:** 🟢 Resuelta — implementada
+**Contexto:** `reservas.spec.md` (#8) documentaba desde el 2026-08-12 (ver
+entrada de PASO 0 más arriba) que las transiciones del Happy Path #5
+(`confirmada` → `sentada`/`cancelada`) habían quedado fuera de alcance a
+propósito. Verificado antes de tocar código que efectivamente no existía
+ningún endpoint (`route:list` solo mostraba `reservas.index`/`reservas.store`)
+ni control en `reservas/Index.vue` (comentario explícito en el archivo
+confirmándolo).
+
+**PASO 0 (spec primero):** se amplió `reservas.spec.md` — Edge Cases, Error
+States, Test Cases y una nota de implementación nueva — antes de escribir
+ninguna Action. Dos decisiones de diseño sin dictado explícito del spec
+original, documentadas ahí mismo:
+- **Guards de transición:** solo `confirmada` puede pasar a `sentada` o a
+  `cancelada`. Repetir la misma transición sobre una reserva ya en el
+  estado destino es idempotente (protección de doble-tap, mismo criterio
+  que `RequestBillAction`/`CloseOrderAction` sobre `Order.status`); cruzar
+  `sentada`↔`cancelada` en cualquier dirección lanza
+  `InvalidReservationTransitionException` → 422. Racional: sentar una
+  reserva `cancelada` no tiene sentido operativo, y cancelar una reserva
+  `sentada` tampoco (el cliente ya llegó) — sin AskUserQuestion disponible
+  en esta sesión (background, sin usuario esperando), se optó por el guard
+  más conservador y se documentó la razón en el spec en vez de bloquear.
+- **`update()` vs `forceFill()`:** a diferencia de `Table.status`/
+  `MenuItem.available` (el trap documentado en `.ai/rules/actions.md`),
+  `Reservation.status` **sí** está en el atributo `#[Fillable(...)]` del
+  modelo (confirmado leyendo `app/Models/Reservation.php` antes de decidir,
+  igual que `Order.status`) — las dos Actions nuevas usan `update()`, mismo
+  patrón que `SendOrderToKitchenAction`/`RequestBillAction` sobre `Order`,
+  no `forceFill()`.
+
+**Implementado:** `SeatReservationAction`/`CancelReservationAction`
+(`app/Actions/Reservations/`, una responsabilidad cada una, mismo patrón
+que `ToggleMenuItemAvailabilityAction`/`DeactivateStaffAccountAction`, no
+una Action genérica "update status"); `InvalidReservationTransitionException`
+(`app/Exceptions/Reservations/`); dos rutas nuevas dentro del grupo
+`reservas.*` ya existente (mismo middleware `role:admin,mesero`, sin
+Policy nueva): `PATCH /reservas/{reservation}/sentar` (`reservas.seat`) y
+`PATCH /reservas/{reservation}/cancelar` (`reservas.cancel`), mismo estilo
+kebab-case en español que `menu/{menuItem}/disponibilidad` y
+`staff/{user}/desactivar`; `ReservationController::seat()`/`cancel()`
+capturan la excepción de dominio como `ValidationException` sobre la key
+`status` (422), mismo patrón que `PastReservationException` en `store()`.
+UI: `reservas/Index.vue` agrega botones "Sentar"/"Cancelar" por fila,
+visibles solo cuando `status === 'confirmada'` (oculta la necesidad de
+depender solo del guard del servidor para la UX), usando
+`router.patch(seat.url(...))`/`cancel.url(...)` de Wayfinder — mismo
+patrón sin `useForm` que `toggleItemAvailability` en `menu/Index.vue`, con
+un guard `transitioningId` contra doble-submit y un mensaje de error
+inline si el servidor rechaza la transición.
+
+**Verificado con:** `tests/Unit/Actions/Reservations/SeatReservationActionTest.php`
+y `CancelReservationActionTest.php` (nuevos, incluyen el caso idempotente y
+el de transición inválida cada uno), `tests/Feature/ReservasTest.php`
+(6 tests nuevos: `sentar`/`cancelar` felices, 422 por transición inválida,
+403 por `role=cocina`, F-05 cross-tenant → 404 sin modificar la reserva de
+otro tenant); suite completa (`php artisan test --compact`, 250 tests, 246
+passed, 4 skipped, 0 fallos — coincide exactamente con el baseline de
+`_ai/CONTEXT.md` de 238/234/4 skipped más los 12 tests nuevos de esta
+sesión); `vendor/bin/pint --dirty --format agent` sin pendientes;
+`npm run lint:check`/`npm run types:check` sin errores.
+
+**Verificación visual en browser real:** tenant demo aislado por dominio
+propio (`demo-ab1811f7.localhost`, en vez del `demo.localhost` genérico de
+las instrucciones) porque varias sesiones de agente concurrentes en otros
+worktrees de esta misma máquina estaban sirviendo tenants demo distintos
+en `demo.localhost` en otros puertos al mismo tiempo — las cookies de
+sesión se comparten por dominio, no por puerto, así que el navegador se
+autenticaba/navegaba intermitentemente contra el servidor de **otra**
+sesión (confirmado viendo staff ajeno — "Juan Mesero"/"Maria Cocina" — en
+pantalla). Renombrar el `Domain` del tenant local a un subdominio único
+aisló las cookies y resolvió el problema; documentado aquí porque es un
+riesgo genérico de correr múltiples agentes en paralelo contra
+`*.localhost`, no específico de esta feature. Con eso resuelto: happy path
+completo en dark mode (crear dos reservas del día, sentar una, cancelar la
+otra — badges y botones se actualizan correctamente, botones desaparecen
+para filas ya `sentada`/`cancelada`) y verificación de layout en light
+mode (`/settings/appearance`); sin errores en la consola del navegador
+(`read_console_messages`, solo el log informativo de Boost).
+
+**Documentación actualizada en conjunto:** `_ai/specs/reservas.spec.md`
+(Edge Cases, Error States, Test Cases, DoD, nota de implementación) y
+`_ai/CONTEXT.md` (backlog abierto, punto 2 marcado resuelto).
