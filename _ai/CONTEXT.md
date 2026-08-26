@@ -320,9 +320,16 @@ decisiones ya documentadas, no specs nuevos:
    Tests/Definition of Done ("brecha cerrada, ver arriba"). Esta auditoría
    de continuidad no la había marcado como resuelta — no hay trabajo
    pendiente aquí.
-4. **F-07 del threat model** — bloqueo de tablet desatendida: decisión de
-   producto pendiente del cliente ancla, no técnica (ver decision-log,
-   2026-08-10).
+4. ~~**F-07 del threat model** — bloqueo de tablet desatendida: decisión de
+   producto pendiente del cliente ancla, no técnica~~ — **Resuelto
+   2026-08-26.** PIN corto (4 dígitos) por usuario, autoconfigurado en
+   `/settings/pin`, gatea solo el submit de los 3 endpoints de cobro si
+   pasaron más de 5 minutos desde la última verificación en la sesión del
+   navegador — navegar, tomar pedidos y enviar a cocina siguen sin
+   fricción. Ver `_ai/specs/bloqueo-tablet-pin.spec.md` y `decision-log.md`,
+   entrada 2026-08-26, para las decisiones de mecánica (PASO 0) y la
+   verificación completa (tests + browser real, light/dark). `_ai/docs/threat-model.md`
+   F-07 pasa a 🟢 Resuelto. Rama `feature/f07-bloqueo-tablet-pin`.
 5. ~~**Gestión de Staff — falta verificación visual**~~ — **Verificado
    2026-08-25.** Click-through completo en browser real (`demo.localhost`,
    `php artisan serve`): 3 cuentas creadas desde la UI (mesero/cocina),

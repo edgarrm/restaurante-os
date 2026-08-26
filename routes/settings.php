@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\PaymentPinController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -10,6 +11,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // PIN de cobro (F-07, _ai/docs/threat-model.md — ver
+    // _ai/specs/bloqueo-tablet-pin.spec.md). Sin RequirePassword ni
+    // restricción de rol, a diferencia de settings/security: es
+    // autoservicio liviano, no una acción de la sensibilidad de rotar
+    // credenciales (ver Security Considerations del spec).
+    Route::get('settings/pin', [PaymentPinController::class, 'edit'])->name('pin.edit');
+    Route::put('settings/pin', [PaymentPinController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('pin.update');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

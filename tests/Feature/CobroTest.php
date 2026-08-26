@@ -14,7 +14,14 @@ use Stancl\Tenancy\Database\Models\Domain;
 
 beforeEach(function () {
     $this->tenant = actingInTenant();
-    $this->mesero = User::factory()->for($this->tenant, 'tenant')->mesero()->create();
+
+    // F-07 (_ai/specs/bloqueo-tablet-pin.spec.md): los endpoints POST de
+    // cobro ahora exigen un PIN configurado + verificado recientemente en
+    // sesión. Este spec no es sobre el PIN — se simula ya-configurado y
+    // ya-verificado para no acoplar cada test existente a ese flujo
+    // (cubierto por su propio spec/tests).
+    $this->mesero = User::factory()->for($this->tenant, 'tenant')->mesero()->withPaymentPin()->create();
+    $this->withSession(['pin_verified_at' => now()->timestamp]);
 });
 
 /**

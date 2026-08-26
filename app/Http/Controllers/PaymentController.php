@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Actions\Orders\AddPaymentToOrderAction;
 use App\Actions\Orders\CloseOrderAction;
 use App\Actions\Orders\RequestBillAction;
+use App\Actions\Staff\VerifyPaymentPinAction;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Exceptions\Orders\InsufficientPaymentException;
+use App\Exceptions\Staff\TooManyPinAttemptsException;
 use App\Models\Order;
 use App\Models\Table;
 use Illuminate\Http\RedirectResponse;
@@ -128,6 +130,34 @@ class PaymentController extends Controller
         return $order->status === OrderStatus::Pagada
             ? to_route('mesas.index')
             : to_route('cobro.show', $table);
+    }
+
+    /**
+     * Verifica el PIN de cobro (F-07, _ai/docs/threat-model.md — ver
+     * _ai/specs/bloqueo-tablet-pin.spec.md). Llamado por el modal de PIN
+     * cuando `EnsurePaymentPinVerified` bloquea un submit de cobro. No
+     * recibe ni necesita `{table}`: la verificación es sobre el usuario
+     * autenticado, no sobre una orden específica.
+     */
+    public function verifyPin(Request $request, VerifyPaymentPinAction $action): RedirectResponse
+    {
+        $data = $request->validate([
+            'pin' => ['required', 'digits:4'],
+        ]);
+
+        try {
+            $verified = $action->handle($request->user(), $data['pin']);
+        } catch (TooManyPinAttemptsException $exception) {
+            throw ValidationException::withMessages(['pin' => $exception->getMessage()]);
+        }
+
+        if (! $verified) {
+            throw ValidationException::withMessages(['pin' => __('PIN incorrecto.')]);
+        }
+
+        $request->session()->put('pin_verified_at', now()->timestamp);
+
+        return back();
     }
 
     /**

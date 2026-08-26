@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { edit as editPin } from '@/routes/pin';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -18,6 +19,15 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Security',
         href: editSecurity(),
+    },
+    {
+        // F-07 (_ai/docs/threat-model.md — ver
+        // _ai/specs/bloqueo-tablet-pin.spec.md): sin restricción de rol,
+        // mismo criterio que el resto de este menú — un PIN configurado
+        // por `cocina` simplemente nunca se usa (el gate real solo corre
+        // en las rutas de cobro, ya restringidas a role:admin,mesero).
+        title: 'PIN de cobro',
+        href: editPin(),
     },
     {
         title: 'Appearance',
