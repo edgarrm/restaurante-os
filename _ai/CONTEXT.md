@@ -290,21 +290,30 @@ nuevo pendiente).** Los 12 specs de `_ai/docs/spec-registry.md` (#0-#9,
 medio implementar ni en Draft/Review**. Lo que queda es deuda técnica y
 decisiones ya documentadas, no specs nuevos:
 
-1. ~~**Bug 404 en Cobro**~~ — **Corregido 2026-08-25 (REDEV-33).** Causa
-   raíz real: `DeleteTableAction` no bloqueaba el borrado de una mesa con
-   orden `lista`/`por_cobrar` (solo `abierta`/`enviada_cocina`); al ser
-   `Table` un modelo `SoftDeletes`, una mesa borrada con cuenta pendiente
-   de cobro devolvía 404 directo en el binding de ruta. Fix + specs/tests
-   actualizados, sin commit todavía (ver `decision-log.md`, entrada
-   REDEV-33). Pendiente: verificar/corregir el dato huérfano real del
-   tenant demo (Mesa 3, id 4) si sigue vivo en algún entorno — no se pudo
-   confirmar in situ, este checkout no tenía `database.sqlite`.
+1. ~~**Bug 404 en Cobro**~~ — **Corregido 2026-08-25 (REDEV-33), commit
+   `d594c47` en `main`.** Causa raíz real: `DeleteTableAction` no
+   bloqueaba el borrado de una mesa con orden `lista`/`por_cobrar` (solo
+   `abierta`/`enviada_cocina`); al ser `Table` un modelo `SoftDeletes`,
+   una mesa borrada con cuenta pendiente de cobro devolvía 404 directo en
+   el binding de ruta. Fix + specs/tests actualizados (ver
+   `decision-log.md`, entrada REDEV-33). Pendiente: verificar/corregir el
+   dato huérfano real del tenant demo (Mesa 3, id 4) si sigue vivo en
+   algún entorno — no se pudo confirmar in situ, este checkout no tenía
+   `database.sqlite`; tampoco se hizo verificación visual en browser real
+   del fix.
 2. **Reservas: transiciones de estado faltantes** — `Reservation` no tiene
    endpoint ni control en UI para pasar a `sentada`/`cancelada` (brecha en
    `_ai/specs/reservas.spec.md`, #8; ver decision-log, PASO 0 de #8).
-3. **Toma de Pedido: editar/quitar ítems de la cuenta** — brecha de
-   contrato en `_ai/specs/toma-de-pedido.spec.md` (#5), dejada fuera de
-   alcance a propósito (ver decision-log, entrada 2026-08-11).
+3. ~~**Toma de Pedido: editar/quitar ítems de la cuenta**~~ — **Nota
+   corregida 2026-08-25: esta entrada estaba obsoleta.** La brecha
+   documentada el 2026-08-11 (`decision-log.md`) se cerró el 2026-08-12 al
+   construir la pantalla Vue: `PATCH /mesas/{table}/pedido/items/{orderItem}`
+   (`UpdateOrderItemQuantityAction`) + stepper en `Pedido.vue`, editable
+   solo mientras la orden sigue `abierta` (decisión de diseño confirmada
+   con el usuario). Ver `_ai/specs/toma-de-pedido.spec.md`, sección E2E
+   Tests/Definition of Done ("brecha cerrada, ver arriba"). Esta auditoría
+   de continuidad no la había marcado como resuelta — no hay trabajo
+   pendiente aquí.
 4. **F-07 del threat model** — bloqueo de tablet desatendida: decisión de
    producto pendiente del cliente ancla, no técnica (ver decision-log,
    2026-08-10).
