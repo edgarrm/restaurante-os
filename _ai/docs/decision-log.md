@@ -1691,3 +1691,80 @@ browser real (`demo.localhost:8011`, Herd `php85`, no Herd nginx —
 salvo el `name` de `package-lock.json` reescrito por `npm install` al
 nombre del directorio del worktree (revertido, no es un cambio de
 dependencia real).
+
+### 2026-08-25 — Refactor: extraída la duplicación de lookup de orden y
+selector "Método de pago" en Cobro (deuda menor diferida en REDEV-29)
+
+Resuelve el punto 7 del backlog abierto (`_ai/CONTEXT.md`, auditoría
+2026-08-20): dos duplicaciones Minor dejadas explícitamente como
+"candidatas a extracción futura, no defectos" en el whole-branch review de
+REDEV-29 (ver arriba, entrada 2026-08-13). Refactor puro — cero cambio de
+comportamiento, sin spec nuevo (el contrato ya está en
+`_ai/specs/division-de-cuenta.spec.md`).
+
+**Backend** (`PaymentController.php`): `show()`, `close()`, `addPayment()`
+y `addPaymentByItems()` repetían la misma query `$table->orders()
+->whereIn('status', [...])->latest()->firstOrFail()`, con una única
+diferencia real entre ellas — `show()` no incluye `Pagada` en la lista de
+estados, las otras tres sí (para que un doble tap sobre una orden ya
+cerrada encuentre la misma orden en vez de 404, ver comentario original en
+`close()`). Extraído a un método privado del controller,
+`resolveOrderForCobro(Table $table, bool $includePagada = false): Order`
+— no a una Action ni a un método de modelo: no hay precedente de ese
+patrón en el repo (revisado `OrderController`, que repite queries
+similares inline sin extraer, ej. `send()`), y es una query de resolución
+de request, no lógica de dominio reutilizable fuera de este controller.
+
+**Frontend** (`mesas/Cobro.vue`): el bloque "Método de pago" (Label +
+grid de 3 botones de variant `PaymentMethod`) se repetía idéntico en los
+dos `<template>` de modo ("Por monto"/"Por ítems"). Extraído a
+`resources/js/components/PaymentMethodSelector.vue` — un componente plano
+`<script setup>` con `v-model` (`modelValue`/`update:modelValue`), mismo
+patrón que los componentes de nivel superior ya existentes en
+`resources/js/components/` (ej. `AlertError.vue`), no el patrón de
+`components/ui/*` (ese es shadcn-vue/reka-ui generado, para primitivos,
+no para este selector específico de dominio). Las opciones
+(`paymentMethodOptions`, antes definidas inline en `Cobro.vue`) se
+movieron a `resources/js/lib/paymentMethods.ts` — único módulo `.ts`
+plano, mismo patrón que `resources/js/lib/flashToast.ts` — para que tanto
+el componente como `Cobro.vue` (que todavía necesita las opciones para
+derivar `methodLabel`, usado en el historial de pagos) importen la misma
+fuente sin duplicar el array ni pelear con `import/order` de ESLint entre
+un `<script>` normal y un `<script setup>` en el mismo `.vue` (primer
+intento, descartado: exportar el array desde un bloque `<script lang="ts">`
+adicional dentro del propio `.vue` del selector — technically válido en
+Vue SFC, pero el linter exige que los imports de ambos bloques se
+ordenen como si fueran un único módulo, y no hay forma de que un import
+de tipo usado en el bloque `<script>` (que debe ir físicamente primero)
+quede alfabéticamente después de imports que solo existen en el bloque
+`<script setup>` de más abajo — un archivo `.ts` aparte evita el problema
+de raíz).
+
+**Verificado con:** suite completa antes y después del refactor — ambas
+veces 238 tests, 234 passed, 4 skipped, 0 fallos, coincide exactamente con
+el baseline de `_ai/CONTEXT.md` (nada roto, nada nuevo: es refactor puro,
+sin tests nuevos). `vendor/bin/pint --dirty --format agent` sin
+pendientes. `npm run lint:check` y `npm run types:check` sin errores
+(el primer intento del componente sí falló `lint:check` por el problema
+de `import/order` descrito arriba, corregido moviendo las opciones a
+`lib/paymentMethods.ts`). `npm run build` sin errores.
+
+**Verificación visual: bloqueada, no se completó.** Se levantó un tenant
+demo nuevo (`OnboardTenantAction`) y `php artisan serve --port=8012` en
+este worktree, con una mesa/orden/ítems de prueba creados por tinker. La
+extensión de Chrome nunca aterrizó de forma estable en ese servidor: la
+URL en la barra de direcciones fue saltando sola entre puertos 8010/8011/
+8012 en navegaciones sucesivas, y terminó autenticada en una pantalla de
+Staff con datos (Juan Mesero/Maria Cocina/Pedro Duplicado) que esta sesión
+no creó — indicio de que el tráfico se enrutó a otro entorno servido por
+Herd, no al `artisan serve` aislado de este worktree. Se abortó antes de
+enviar ningún pago para no escribir contra datos que no son de este
+worktree. Evidencia de "cero regresión de comportamiento" queda apoyada
+en la suite automatizada (idéntica antes/después) más lint/types/build en
+verde, tal como habilita el criterio de bloqueo real de esta tarea.
+
+Archivos: `app/Http/Controllers/PaymentController.php`,
+`resources/js/pages/mesas/Cobro.vue`,
+`resources/js/components/PaymentMethodSelector.vue` (nuevo),
+`resources/js/lib/paymentMethods.ts` (nuevo). Rama
+`refactor/cobro-duplicacion-query-metodo-pago`.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import PaymentMethodSelector from '@/components/PaymentMethodSelector.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { paymentMethodOptions } from '@/lib/paymentMethods';
 import { close as closeRoute, show as cobroShow } from '@/routes/cobro';
 import { porItems as addPaymentByItemsRoute, store as addPaymentRoute } from '@/routes/cobro/pagos';
 import { index as mesasIndex } from '@/routes/mesas';
@@ -72,13 +74,7 @@ const errorMessage = computed(() => {
     return values.length > 0 ? values[0] : null;
 });
 
-const methodOptions: { value: PaymentMethod; label: string }[] = [
-    { value: 'efectivo', label: 'Efectivo' },
-    { value: 'tarjeta', label: 'Tarjeta' },
-    { value: 'transferencia', label: 'Transferencia' },
-];
-
-const methodLabel = Object.fromEntries(methodOptions.map((option) => [option.value, option.label])) as Record<PaymentMethod, string>;
+const methodLabel = Object.fromEntries(paymentMethodOptions.map((option) => [option.value, option.label])) as Record<PaymentMethod, string>;
 
 const method = ref<PaymentMethod>('efectivo');
 
@@ -294,21 +290,7 @@ function confirmPayment() {
                     </div>
 
                     <template v-if="mode === 'monto'">
-                        <div class="flex flex-col gap-2">
-                            <Label>Método de pago</Label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <Button
-                                    v-for="option in methodOptions"
-                                    :key="option.value"
-                                    type="button"
-                                    size="sm"
-                                    :variant="method === option.value ? 'default' : 'outline'"
-                                    @click="method = option.value"
-                                >
-                                    {{ option.label }}
-                                </Button>
-                            </div>
-                        </div>
+                        <PaymentMethodSelector v-model="method" />
 
                         <div class="flex flex-col gap-2">
                             <div class="flex items-center justify-between">
@@ -338,21 +320,7 @@ function confirmPayment() {
                         </Button>
                     </template>
                     <template v-else>
-                        <div class="flex flex-col gap-2">
-                            <Label>Método de pago</Label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <Button
-                                    v-for="option in methodOptions"
-                                    :key="option.value"
-                                    type="button"
-                                    size="sm"
-                                    :variant="method === option.value ? 'default' : 'outline'"
-                                    @click="method = option.value"
-                                >
-                                    {{ option.label }}
-                                </Button>
-                            </div>
-                        </div>
+                        <PaymentMethodSelector v-model="method" />
 
                         <div v-if="itemsSinAsignar.length === 0" class="py-4 text-center text-sm text-muted-foreground">
                             No quedan ítems sin cobrar.

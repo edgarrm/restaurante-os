@@ -8,6 +8,7 @@ use App\Actions\Orders\RequestBillAction;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Exceptions\Orders\InsufficientPaymentException;
+use App\Models\Order;
 use App\Models\Table;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,10 +28,7 @@ class PaymentController extends Controller
      */
     public function show(Table $table, RequestBillAction $action): Response
     {
-        $order = $table->orders()
-            ->whereIn('status', [OrderStatus::Abierta, OrderStatus::EnviadaCocina, OrderStatus::Lista, OrderStatus::PorCobrar])
-            ->latest()
-            ->firstOrFail();
+        $order = $this->resolveOrderForCobro($table);
 
         $order = $action->handle($order);
 
@@ -61,16 +59,7 @@ class PaymentController extends Controller
 
         // Incluye `Pagada` para que un doble tap sobre una orden ya cerrada
         // encuentre la misma orden en vez de 404 (Edge Cases: idempotente).
-        $order = $table->orders()
-            ->whereIn('status', [
-                OrderStatus::Abierta,
-                OrderStatus::EnviadaCocina,
-                OrderStatus::Lista,
-                OrderStatus::PorCobrar,
-                OrderStatus::Pagada,
-            ])
-            ->latest()
-            ->firstOrFail();
+        $order = $this->resolveOrderForCobro($table, includePagada: true);
 
         try {
             $action->handle($order, (float) $data['amount'], PaymentMethod::from($data['method']), $request->user());
@@ -103,16 +92,7 @@ class PaymentController extends Controller
             'method' => ['required', Rule::enum(PaymentMethod::class)],
         ]);
 
-        $order = $table->orders()
-            ->whereIn('status', [
-                OrderStatus::Abierta,
-                OrderStatus::EnviadaCocina,
-                OrderStatus::Lista,
-                OrderStatus::PorCobrar,
-                OrderStatus::Pagada,
-            ])
-            ->latest()
-            ->firstOrFail();
+        $order = $this->resolveOrderForCobro($table, includePagada: true);
 
         $order = $action->handle($order, (float) $data['amount'], PaymentMethod::from($data['method']), $request->user());
 
@@ -141,21 +121,38 @@ class PaymentController extends Controller
             'method' => ['required', Rule::enum(PaymentMethod::class)],
         ]);
 
-        $order = $table->orders()
-            ->whereIn('status', [
-                OrderStatus::Abierta,
-                OrderStatus::EnviadaCocina,
-                OrderStatus::Lista,
-                OrderStatus::PorCobrar,
-                OrderStatus::Pagada,
-            ])
-            ->latest()
-            ->firstOrFail();
+        $order = $this->resolveOrderForCobro($table, includePagada: true);
 
         $order = $action->handleForItems($order, $data['item_ids'], PaymentMethod::from($data['method']), $request->user());
 
         return $order->status === OrderStatus::Pagada
             ? to_route('mesas.index')
             : to_route('cobro.show', $table);
+    }
+
+    /**
+     * Resuelve la orden activa de una mesa para las pantallas/acciones de
+     * cobro (US-3.1/US-3.2). `includePagada` cubre el caso "doble tap"
+     * (ver `close()`/`addPayment()`): un segundo submit sobre una orden ya
+     * cerrada debe encontrar la misma orden en vez de 404, en lugar de
+     * lanzar `InsufficientPaymentException`/error de estado.
+     */
+    private function resolveOrderForCobro(Table $table, bool $includePagada = false): Order
+    {
+        $statuses = [
+            OrderStatus::Abierta,
+            OrderStatus::EnviadaCocina,
+            OrderStatus::Lista,
+            OrderStatus::PorCobrar,
+        ];
+
+        if ($includePagada) {
+            $statuses[] = OrderStatus::Pagada;
+        }
+
+        return $table->orders()
+            ->whereIn('status', $statuses)
+            ->latest()
+            ->firstOrFail();
     }
 }
