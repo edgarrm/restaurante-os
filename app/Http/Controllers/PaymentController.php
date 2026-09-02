@@ -155,7 +155,7 @@ class PaymentController extends Controller
             throw ValidationException::withMessages(['pin' => __('PIN incorrecto.')]);
         }
 
-        $request->session()->put('pin_verified_at', now()->timestamp);
+        $request->session()->put('pin_verified_at', now()->getTimestamp());
 
         return back();
     }

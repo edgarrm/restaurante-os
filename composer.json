@@ -16,6 +16,7 @@
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
+        "league/commonmark": "^2.10",
         "stancl/tenancy": "^3.10"
     },
     "require-dev": {

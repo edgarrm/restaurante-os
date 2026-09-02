@@ -33,7 +33,10 @@ class PaymentPinController extends Controller
      */
     public function update(Request $request, SetPaymentPinAction $action): RedirectResponse
     {
-        $action->handle($request->user(), $request->only(['pin', 'pin_confirmation']));
+        $action->handle($request->user(), [
+            'pin' => $request->string('pin')->toString(),
+            'pin_confirmation' => $request->string('pin_confirmation')->toString(),
+        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('PIN actualizado.')]);
 

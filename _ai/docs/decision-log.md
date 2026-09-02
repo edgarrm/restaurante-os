@@ -1973,3 +1973,61 @@ Layout.vue`, `database/migrations/2026_08_26_091449_create_passkeys_table
 .php` (nuevo, del paquete). Tests: `tests/Unit/Actions/Fortify/
 AuthorizePasskeyLoginTest.php`, `tests/Unit/PasskeyCrossTenantScopeTest.php`,
 `tests/Feature/PasskeysTest.php`. Rama `feature/passkeys-webauthn`.
+
+### 2026-09-02 — Supply-chain: nanoid + league/commonmark + drift de CI en `main`
+
+Detectado al revisar las 5 PRs abiertas de Dependabot (todas fallaban
+`audit`/`ci` — investigado antes de decidir si mergear alguna, ver
+`_ai/CONTEXT.md`): dos problemas preexistentes en `main`, sin relación a
+los bumps que proponen esas PRs.
+
+1. **`nanoid` 3.3.17 vulnerable** (GHSA-2v37-7h3g-55p8, alta severidad,
+   DoS por generador custom con `size=0`) vía `postcss`. El `overrides`
+   exacto de `package.json` (mecanismo de cuarentena documentado en
+   `.ai/rules/general.md`) fijaba `nanoid` en `3.3.17` — el fix de una
+   vulnerabilidad *anterior*, no de esta. Avanzado a `3.3.18` (publicado
+   hace 26 días, fuera de la ventana de `min-release-age=5`), mismo
+   patrón de pin exacto. `postcss` 8.5.25→8.5.26 (patch) como efecto
+   colateral del refresh del lockfile.
+2. **`league/commonmark` 2.9.1 vulnerable** (PKSA-zyf5-hrxv-hrd7 /
+   GHSA-8rr7-cvq3-gmfh, alta severidad, DoS por atributos con nombres
+   distintos en la extensión Attributes) — reportada el día anterior
+   (2026-09-01), dependencia transitiva de `laravel/framework`
+   (`^2.8.1`). Sin mecanismo de cuarentena para Composer en este repo
+   (`.ai/rules/general.md` solo documenta `min-release-age` para npm).
+   Fijada como dependencia directa `^2.10` (patrón estándar de Composer
+   para pinnear una transitiva, equivalente al `overrides` de npm).
+3. **18 archivos de `resources/` sin formato Prettier aplicado** (drift
+   acumulado de varias sesiones en paralelo) — corregido con
+   `npm run format`, solo cambios de formato (line-wrap, orden de clases
+   Tailwind), sin lógica, verificado con la suite completa sin cambios.
+4. **2 errores reales de PHPStan** en el código de F-07 (nunca corridos
+   antes — las sesiones previas solo verificaron con
+   `php artisan test`, no con `composer ci:check`/`types:check`
+   completo, que corre PHPStan además de vue-tsc):
+   `PaymentPinController::update()` pasaba `$request->only([...])`
+   (`array` genérico) donde `SetPaymentPinAction::handle()` espera
+   `array{pin: string, pin_confirmation?: string}` — corregido
+   construyendo el array explícito con `$request->string(...)->toString()`,
+   mismo patrón ya usado en `StaffController::store()`.
+   `EnsurePaymentPinVerified`/`PaymentController::verifyPin()` usaban
+   `now()->timestamp` (propiedad mágica de Carbon, tipada
+   `float|int|string` para PHPStan) en una resta — corregido a
+   `now()->getTimestamp()` (método de `DateTimeInterface`, tipado `int`
+   sin ambigüedad).
+
+**Efecto colateral no solicitado:** `composer require league/commonmark`
+disparó automáticamente el hook `boost:update` de Laravel Boost, que
+reescribió `CLAUDE.md`/`AGENTS.md` quitando el bloque de reglas
+"Laravel Herd" — no se investigó la causa raíz ni se revirtió en esta
+sesión, queda para que el usuario decida si restaurarlo.
+
+**Verificado con:** `composer security:audit` (composer audit + npm audit
+signatures + npm audit --audit-level=high) → 0 vulnerabilidades;
+`composer ci:check` completo (eslint, prettier, vue-tsc, pint, phpstan,
+pest) → todo en verde, suite completa 290 tests, 286 passed, 4 skipped,
+0 fallos (sin cambio respecto al baseline); `npm run build` limpio.
+
+Las 5 PRs de Dependabot siguen sin mergear — pendientes de revisitar con
+CI ya confiable en `main` (pedido explícito del usuario: arreglar `main`
+primero, decidir las PRs después).

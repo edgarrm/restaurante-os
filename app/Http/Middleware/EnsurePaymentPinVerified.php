@@ -43,7 +43,7 @@ class EnsurePaymentPinVerified
 
         $verifiedAt = $request->session()->get('pin_verified_at');
 
-        if (is_int($verifiedAt) && (now()->timestamp - $verifiedAt) <= self::TTL_SECONDS) {
+        if (is_int($verifiedAt) && (now()->getTimestamp() - $verifiedAt) <= self::TTL_SECONDS) {
             return $next($request);
         }
 
