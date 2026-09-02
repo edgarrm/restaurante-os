@@ -3,7 +3,15 @@ import { useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -62,7 +70,9 @@ function submit() {
                 <DialogHeader>
                     <DialogTitle>Verifica tu PIN</DialogTitle>
                     <DialogDescription>
-                        Por seguridad, ingresa tu PIN de cobro para continuar. No has verificado tu PIN en los últimos 5 minutos en este dispositivo.
+                        Por seguridad, ingresa tu PIN de cobro para continuar.
+                        No has verificado tu PIN en los últimos 5 minutos en
+                        este dispositivo.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -84,9 +94,14 @@ function submit() {
 
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>
-                        <Button type="button" variant="secondary">Cancelar</Button>
+                        <Button type="button" variant="secondary"
+                            >Cancelar</Button
+                        >
                     </DialogClose>
-                    <Button type="submit" :disabled="form.processing || form.pin.length !== 4">
+                    <Button
+                        type="submit"
+                        :disabled="form.processing || form.pin.length !== 4"
+                    >
                         <Spinner v-if="form.processing" class="size-4" />
                         {{ form.processing ? 'Verificando…' : 'Verificar' }}
                     </Button>

@@ -9,7 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { index as mesasIndex } from '@/routes/mesas';
-import { addItem as addItemRoute, send as sendRoute, show as pedidoShow, updateItem as updateItemRoute } from '@/routes/pedido';
+import {
+    addItem as addItemRoute,
+    send as sendRoute,
+    show as pedidoShow,
+    updateItem as updateItemRoute,
+} from '@/routes/pedido';
 import type { MenuItem, Order, OrderItem, OrderStatus, Table } from '@/types';
 
 const { table, menuItems, order } = defineProps<{
@@ -45,7 +50,9 @@ const orderStatusLabel: Record<OrderStatus, string> = {
     cancelada: 'Cancelada',
 };
 
-const menuItemById = computed(() => new Map(menuItems.map((item) => [item.id, item])));
+const menuItemById = computed(
+    () => new Map(menuItems.map((item) => [item.id, item])),
+);
 
 const categories = computed(() => {
     const grouped = new Map<string, MenuItem[]>();
@@ -67,9 +74,13 @@ const cuentaLines = computed(() =>
     })),
 );
 
-const total = computed(() => cuentaLines.value.reduce((sum, line) => sum + line.subtotal, 0));
+const total = computed(() =>
+    cuentaLines.value.reduce((sum, line) => sum + line.subtotal, 0),
+);
 
-const canSend = computed(() => isEditable.value && cuentaLines.value.length > 0);
+const canSend = computed(
+    () => isEditable.value && cuentaLines.value.length > 0,
+);
 
 function money(value: number): string {
     return `$${value.toFixed(2)}`;
@@ -154,7 +165,9 @@ function sendToKitchen() {
     <div class="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <h1 class="font-mono text-2xl font-bold tracking-tight text-foreground">
+                <h1
+                    class="font-mono text-2xl font-bold tracking-tight text-foreground"
+                >
                     {{ table.name }}
                 </h1>
                 <Badge v-if="order.status !== 'abierta'" variant="secondary">
@@ -173,27 +186,53 @@ function sendToKitchen() {
         <div class="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
             <!-- Menú -->
             <div class="flex flex-col gap-6">
-                <div v-if="menuItems.length === 0" class="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
+                <div
+                    v-if="menuItems.length === 0"
+                    class="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground"
+                >
                     No hay platillos configurados todavía.
                 </div>
-                <div v-for="[category, items] in categories" :key="category" class="flex flex-col gap-3">
-                    <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                <div
+                    v-for="[category, items] in categories"
+                    :key="category"
+                    class="flex flex-col gap-3"
+                >
+                    <h2
+                        class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                    >
                         {{ category }}
                     </h2>
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                    <div
+                        class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+                    >
                         <button
                             v-for="item in items"
                             :key="item.id"
                             type="button"
-                            :disabled="!item.available || addingItemId === item.id"
+                            :disabled="
+                                !item.available || addingItemId === item.id
+                            "
                             class="flex min-h-[5.5rem] flex-col justify-between gap-2 rounded-lg border-2 border-border bg-card p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-card"
                             @click="addItem(item)"
                         >
-                            <span class="text-sm leading-snug font-medium text-foreground">{{ item.name }}</span>
+                            <span
+                                class="text-sm leading-snug font-medium text-foreground"
+                                >{{ item.name }}</span
+                            >
                             <span class="flex items-center justify-between">
-                                <span class="font-mono text-sm text-muted-foreground">{{ money(Number(item.price)) }}</span>
-                                <Spinner v-if="addingItemId === item.id" class="size-3.5" />
-                                <span v-else-if="!item.available" class="text-xs text-muted-foreground">No disponible</span>
+                                <span
+                                    class="font-mono text-sm text-muted-foreground"
+                                    >{{ money(Number(item.price)) }}</span
+                                >
+                                <Spinner
+                                    v-if="addingItemId === item.id"
+                                    class="size-3.5"
+                                />
+                                <span
+                                    v-else-if="!item.available"
+                                    class="text-xs text-muted-foreground"
+                                    >No disponible</span
+                                >
                             </span>
                         </button>
                     </div>
@@ -206,18 +245,36 @@ function sendToKitchen() {
                     <CardTitle class="font-mono">La Cuenta</CardTitle>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
-                    <div v-if="cuentaLines.length === 0" class="py-8 text-center text-sm text-muted-foreground">
-                        Aún no hay platillos en la cuenta. Toca un platillo del menú para agregarlo.
+                    <div
+                        v-if="cuentaLines.length === 0"
+                        class="py-8 text-center text-sm text-muted-foreground"
+                    >
+                        Aún no hay platillos en la cuenta. Toca un platillo del
+                        menú para agregarlo.
                     </div>
 
                     <ul v-else class="flex flex-col gap-3">
-                        <li v-for="line in cuentaLines" :key="line.orderItem.id" class="flex items-start justify-between gap-2">
+                        <li
+                            v-for="line in cuentaLines"
+                            :key="line.orderItem.id"
+                            class="flex items-start justify-between gap-2"
+                        >
                             <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium text-foreground">
-                                    {{ line.menuItem?.name ?? `Platillo #${line.orderItem.menu_item_id}` }}
+                                <span
+                                    class="text-sm font-medium text-foreground"
+                                >
+                                    {{
+                                        line.menuItem?.name ??
+                                        `Platillo #${line.orderItem.menu_item_id}`
+                                    }}
                                 </span>
-                                <span class="font-mono text-xs text-muted-foreground">
-                                    {{ money(Number(line.orderItem.unit_price)) }} c/u
+                                <span
+                                    class="font-mono text-xs text-muted-foreground"
+                                >
+                                    {{
+                                        money(Number(line.orderItem.unit_price))
+                                    }}
+                                    c/u
                                 </span>
                             </div>
 
@@ -227,25 +284,42 @@ function sendToKitchen() {
                                         size="icon"
                                         variant="outline"
                                         class="size-7"
-                                        :disabled="updatingItemId === line.orderItem.id"
-                                        @click="adjustQuantity(line.orderItem, -1)"
+                                        :disabled="
+                                            updatingItemId === line.orderItem.id
+                                        "
+                                        @click="
+                                            adjustQuantity(line.orderItem, -1)
+                                        "
                                     >
                                         <Minus class="size-3.5" />
                                     </Button>
-                                    <span class="w-5 text-center font-mono text-sm text-foreground">{{ line.orderItem.quantity }}</span>
+                                    <span
+                                        class="w-5 text-center font-mono text-sm text-foreground"
+                                        >{{ line.orderItem.quantity }}</span
+                                    >
                                     <Button
                                         size="icon"
                                         variant="outline"
                                         class="size-7"
-                                        :disabled="updatingItemId === line.orderItem.id"
-                                        @click="adjustQuantity(line.orderItem, 1)"
+                                        :disabled="
+                                            updatingItemId === line.orderItem.id
+                                        "
+                                        @click="
+                                            adjustQuantity(line.orderItem, 1)
+                                        "
                                     >
                                         <Plus class="size-3.5" />
                                     </Button>
                                 </template>
-                                <span v-else class="font-mono text-sm text-foreground">×{{ line.orderItem.quantity }}</span>
+                                <span
+                                    v-else
+                                    class="font-mono text-sm text-foreground"
+                                    >×{{ line.orderItem.quantity }}</span
+                                >
 
-                                <span class="w-14 text-right font-mono text-sm font-medium text-foreground">
+                                <span
+                                    class="w-14 text-right font-mono text-sm font-medium text-foreground"
+                                >
                                     {{ money(line.subtotal) }}
                                 </span>
                             </div>
@@ -255,16 +329,31 @@ function sendToKitchen() {
                     <Separator />
 
                     <div class="flex items-center justify-between">
-                        <span class="text-sm font-semibold text-foreground">Total</span>
-                        <span class="font-mono text-lg font-bold text-foreground">{{ money(total) }}</span>
+                        <span class="text-sm font-semibold text-foreground"
+                            >Total</span
+                        >
+                        <span
+                            class="font-mono text-lg font-bold text-foreground"
+                            >{{ money(total) }}</span
+                        >
                     </div>
 
-                    <Button v-if="isEditable" size="lg" :disabled="!canSend || sending" @click="sendToKitchen">
+                    <Button
+                        v-if="isEditable"
+                        size="lg"
+                        :disabled="!canSend || sending"
+                        @click="sendToKitchen"
+                    >
                         <Spinner v-if="sending" class="size-4" />
                         {{ sending ? 'Enviando…' : 'Enviar a Cocina' }}
                     </Button>
-                    <Badge v-else variant="secondary" class="w-full justify-center py-2">
-                        {{ orderStatusLabel[order.status] }} — puedes seguir agregando platillos
+                    <Badge
+                        v-else
+                        variant="secondary"
+                        class="w-full justify-center py-2"
+                    >
+                        {{ orderStatusLabel[order.status] }} — puedes seguir
+                        agregando platillos
                     </Badge>
                 </CardContent>
             </Card>

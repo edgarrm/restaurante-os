@@ -131,7 +131,8 @@ function confirmDelete() {
         // arriba), así que este mensaje es un respaldo para el caso residual
         // (carrera con un pedido recién abierto).
         onError: () => {
-            deleteError.value = 'No se pudo eliminar la mesa: probablemente tiene una cuenta activa.';
+            deleteError.value =
+                'No se pudo eliminar la mesa: probablemente tiene una cuenta activa.';
         },
         onFinish: () => {
             isDeleting.value = false;
@@ -159,34 +160,47 @@ function confirmDelete() {
                 No hay mesas configuradas todavía.
             </p>
             <p class="max-w-sm text-sm text-muted-foreground">
-                Crea la primera mesa para que el mapa de mesas y la toma de pedidos tengan sobre qué operar.
+                Crea la primera mesa para que el mapa de mesas y la toma de
+                pedidos tengan sobre qué operar.
             </p>
             <Button @click="openCreate">Nueva mesa</Button>
         </div>
 
-        <div v-else class="divide-y divide-border overflow-hidden rounded-lg border">
+        <div
+            v-else
+            class="divide-y divide-border overflow-hidden rounded-lg border"
+        >
             <div
                 v-for="table in tables"
                 :key="table.id"
                 class="flex flex-wrap items-center justify-between gap-3 bg-card p-4"
             >
                 <div class="flex items-center gap-3">
-                    <span class="font-mono font-medium text-foreground">{{ table.name }}</span>
+                    <span class="font-mono font-medium text-foreground">{{
+                        table.name
+                    }}</span>
                     <Badge :variant="statusVariant[table.status]">
                         {{ statusLabel[table.status] }}
                     </Badge>
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-muted-foreground">
-                        {{ table.capacity }} {{ table.capacity === 1 ? 'persona' : 'personas' }}
+                        {{ table.capacity }}
+                        {{ table.capacity === 1 ? 'persona' : 'personas' }}
                     </span>
-                    <Button size="sm" variant="outline" @click="openEdit(table)">Editar</Button>
+                    <Button size="sm" variant="outline" @click="openEdit(table)"
+                        >Editar</Button
+                    >
                     <Button
                         size="sm"
                         variant="ghost"
                         class="text-destructive hover:text-destructive"
                         :disabled="table.status === 'ocupada'"
-                        :title="table.status === 'ocupada' ? 'No se puede eliminar: tiene una cuenta activa.' : undefined"
+                        :title="
+                            table.status === 'ocupada'
+                                ? 'No se puede eliminar: tiene una cuenta activa.'
+                                : undefined
+                        "
                         @click="openDelete(table)"
                     >
                         Eliminar
@@ -202,29 +216,49 @@ function confirmDelete() {
                     <DialogHeader>
                         <DialogTitle>Nueva mesa</DialogTitle>
                         <DialogDescription>
-                            Queda disponible de inmediato en el mapa de mesas con estado libre.
+                            Queda disponible de inmediato en el mapa de mesas
+                            con estado libre.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div class="grid gap-2">
                         <Label for="create-name">Nombre</Label>
-                        <Input id="create-name" v-model="createForm.name" autocomplete="off" />
+                        <Input
+                            id="create-name"
+                            v-model="createForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="createForm.errors.name" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="create-capacity">Capacidad</Label>
-                        <Input id="create-capacity" v-model="createForm.capacity" type="number" step="1" min="1" />
+                        <Input
+                            id="create-capacity"
+                            v-model="createForm.capacity"
+                            type="number"
+                            step="1"
+                            min="1"
+                        />
                         <InputError :message="createForm.errors.capacity" />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="createForm.processing">
-                            <Spinner v-if="createForm.processing" class="size-4" />
-                            {{ createForm.processing ? 'Guardando…' : 'Crear mesa' }}
+                            <Spinner
+                                v-if="createForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                createForm.processing
+                                    ? 'Guardando…'
+                                    : 'Crear mesa'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -232,35 +266,58 @@ function confirmDelete() {
         </Dialog>
 
         <!-- Editar mesa -->
-        <Dialog :open="editingTable !== null" @update:open="(value) => !value && closeEdit()">
+        <Dialog
+            :open="editingTable !== null"
+            @update:open="(value) => !value && closeEdit()"
+        >
             <DialogContent>
                 <form class="space-y-6" @submit.prevent="submitEdit">
                     <DialogHeader>
                         <DialogTitle>Editar mesa</DialogTitle>
                         <DialogDescription>
-                            Cambiar nombre o capacidad no afecta ninguna cuenta en curso en esta mesa.
+                            Cambiar nombre o capacidad no afecta ninguna cuenta
+                            en curso en esta mesa.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div class="grid gap-2">
                         <Label for="edit-name">Nombre</Label>
-                        <Input id="edit-name" v-model="editForm.name" autocomplete="off" />
+                        <Input
+                            id="edit-name"
+                            v-model="editForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="editForm.errors.name" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="edit-capacity">Capacidad</Label>
-                        <Input id="edit-capacity" v-model="editForm.capacity" type="number" step="1" min="1" />
+                        <Input
+                            id="edit-capacity"
+                            v-model="editForm.capacity"
+                            type="number"
+                            step="1"
+                            min="1"
+                        />
                         <InputError :message="editForm.errors.capacity" />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="editForm.processing">
-                            <Spinner v-if="editForm.processing" class="size-4" />
-                            {{ editForm.processing ? 'Guardando…' : 'Guardar cambios' }}
+                            <Spinner
+                                v-if="editForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                editForm.processing
+                                    ? 'Guardando…'
+                                    : 'Guardar cambios'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -268,12 +325,19 @@ function confirmDelete() {
         </Dialog>
 
         <!-- Eliminar mesa -->
-        <Dialog :open="deletingTable !== null" @update:open="(value) => !value && closeDelete()">
+        <Dialog
+            :open="deletingTable !== null"
+            @update:open="(value) => !value && closeDelete()"
+        >
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Eliminar mesa</DialogTitle>
                     <DialogDescription>
-                        {{ deletingTable ? `¿Eliminar "${deletingTable.name}"? Esta acción no se puede deshacer.` : '' }}
+                        {{
+                            deletingTable
+                                ? `¿Eliminar "${deletingTable.name}"? Esta acción no se puede deshacer.`
+                                : ''
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -281,9 +345,16 @@ function confirmDelete() {
 
                 <DialogFooter class="gap-2">
                     <DialogClose as-child>
-                        <Button type="button" variant="secondary">Cancelar</Button>
+                        <Button type="button" variant="secondary"
+                            >Cancelar</Button
+                        >
                     </DialogClose>
-                    <Button type="button" variant="destructive" :disabled="isDeleting" @click="confirmDelete">
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        :disabled="isDeleting"
+                        @click="confirmDelete"
+                    >
                         <Spinner v-if="isDeleting" class="size-4" />
                         {{ isDeleting ? 'Eliminando…' : 'Eliminar' }}
                     </Button>

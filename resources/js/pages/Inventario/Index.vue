@@ -15,7 +15,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { adjust, index as inventarioIndex, store } from '@/routes/inventario';
 import type { InventoryItem, InventoryMovementType } from '@/types';
@@ -38,7 +44,10 @@ function isOutOfStock(item: InventoryItem): boolean {
 }
 
 function isLowStock(item: InventoryItem): boolean {
-    return !isOutOfStock(item) && Number(item.quantity_on_hand) <= Number(item.low_stock_threshold);
+    return (
+        !isOutOfStock(item) &&
+        Number(item.quantity_on_hand) <= Number(item.low_stock_threshold)
+    );
 }
 
 // Paleta semántica del proyecto (resources/css/app.css): ámbar=alerta,
@@ -155,7 +164,10 @@ function submitAdjust() {
             <Button @click="openCreate">Nuevo insumo</Button>
         </div>
 
-        <div v-else class="divide-y divide-border overflow-hidden rounded-lg border">
+        <div
+            v-else
+            class="divide-y divide-border overflow-hidden rounded-lg border"
+        >
             <div
                 v-for="item in items"
                 :key="item.id"
@@ -163,18 +175,37 @@ function submitAdjust() {
                 :class="rowClasses(item)"
             >
                 <div class="flex flex-col">
-                    <span class="font-medium text-foreground">{{ item.name }}</span>
-                    <span class="text-sm text-muted-foreground">Umbral de alerta: {{ quantityLabel(item.low_stock_threshold) }} {{ item.unit }}</span>
+                    <span class="font-medium text-foreground">{{
+                        item.name
+                    }}</span>
+                    <span class="text-sm text-muted-foreground"
+                        >Umbral de alerta:
+                        {{ quantityLabel(item.low_stock_threshold) }}
+                        {{ item.unit }}</span
+                    >
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="font-mono text-lg font-semibold text-foreground">
-                        {{ quantityLabel(item.quantity_on_hand) }} {{ item.unit }}
+                    <span
+                        class="font-mono text-lg font-semibold text-foreground"
+                    >
+                        {{ quantityLabel(item.quantity_on_hand) }}
+                        {{ item.unit }}
                     </span>
-                    <Badge v-if="isOutOfStock(item)" variant="destructive">Sin stock</Badge>
-                    <Badge v-else-if="isLowStock(item)" class="border-status-ocupada bg-status-ocupada/20 text-foreground">
+                    <Badge v-if="isOutOfStock(item)" variant="destructive"
+                        >Sin stock</Badge
+                    >
+                    <Badge
+                        v-else-if="isLowStock(item)"
+                        class="border-status-ocupada bg-status-ocupada/20 text-foreground"
+                    >
                         Bajo el umbral
                     </Badge>
-                    <Button size="sm" variant="outline" @click="openAdjust(item)">Registrar movimiento</Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="openAdjust(item)"
+                        >Registrar movimiento</Button
+                    >
                 </div>
             </div>
         </div>
@@ -186,25 +217,37 @@ function submitAdjust() {
                     <DialogHeader>
                         <DialogTitle>Nuevo insumo</DialogTitle>
                         <DialogDescription>
-                            Queda disponible de inmediato en la lista de inventario.
+                            Queda disponible de inmediato en la lista de
+                            inventario.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div class="grid gap-2">
                         <Label for="create-name">Nombre</Label>
-                        <Input id="create-name" v-model="createForm.name" autocomplete="off" />
+                        <Input
+                            id="create-name"
+                            v-model="createForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="createForm.errors.name" />
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="grid gap-2">
                             <Label for="create-unit">Unidad</Label>
-                            <Input id="create-unit" v-model="createForm.unit" autocomplete="off" placeholder="kg, l, unidad…" />
+                            <Input
+                                id="create-unit"
+                                v-model="createForm.unit"
+                                autocomplete="off"
+                                placeholder="kg, l, unidad…"
+                            />
                             <InputError :message="createForm.errors.unit" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="create-threshold">Umbral de alerta</Label>
+                            <Label for="create-threshold"
+                                >Umbral de alerta</Label
+                            >
                             <Input
                                 id="create-threshold"
                                 v-model.number="createForm.low_stock_threshold"
@@ -212,7 +255,9 @@ function submitAdjust() {
                                 step="0.001"
                                 min="0"
                             />
-                            <InputError :message="createForm.errors.low_stock_threshold" />
+                            <InputError
+                                :message="createForm.errors.low_stock_threshold"
+                            />
                         </div>
                     </div>
 
@@ -225,16 +270,27 @@ function submitAdjust() {
                             step="0.001"
                             min="0"
                         />
-                        <InputError :message="createForm.errors.quantity_on_hand" />
+                        <InputError
+                            :message="createForm.errors.quantity_on_hand"
+                        />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="createForm.processing">
-                            <Spinner v-if="createForm.processing" class="size-4" />
-                            {{ createForm.processing ? 'Guardando…' : 'Crear insumo' }}
+                            <Spinner
+                                v-if="createForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                createForm.processing
+                                    ? 'Guardando…'
+                                    : 'Crear insumo'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -242,14 +298,24 @@ function submitAdjust() {
         </Dialog>
 
         <!-- Registrar movimiento -->
-        <Dialog :open="adjustingItem !== null" @update:open="(value) => !value && closeAdjust()">
+        <Dialog
+            :open="adjustingItem !== null"
+            @update:open="(value) => !value && closeAdjust()"
+        >
             <DialogContent>
                 <form class="space-y-6" @submit.prevent="submitAdjust">
                     <DialogHeader>
                         <DialogTitle>Registrar movimiento</DialogTitle>
                         <DialogDescription>
                             {{ adjustingItem?.name }} — cantidad actual:
-                            {{ adjustingItem ? quantityLabel(adjustingItem.quantity_on_hand) : '' }} {{ adjustingItem?.unit }}
+                            {{
+                                adjustingItem
+                                    ? quantityLabel(
+                                          adjustingItem.quantity_on_hand,
+                                      )
+                                    : ''
+                            }}
+                            {{ adjustingItem?.unit }}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -269,23 +335,46 @@ function submitAdjust() {
 
                     <div class="grid gap-2">
                         <Label for="movement-quantity">Cantidad</Label>
-                        <Input id="movement-quantity" v-model.number="movementForm.quantity" type="number" step="0.001" min="0.001" />
+                        <Input
+                            id="movement-quantity"
+                            v-model.number="movementForm.quantity"
+                            type="number"
+                            step="0.001"
+                            min="0.001"
+                        />
                         <InputError :message="movementForm.errors.quantity" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="movement-note">Nota (opcional)</Label>
-                        <Input id="movement-note" v-model="movementForm.note" autocomplete="off" placeholder="Ej. Compra a proveedor, merma…" />
+                        <Input
+                            id="movement-note"
+                            v-model="movementForm.note"
+                            autocomplete="off"
+                            placeholder="Ej. Compra a proveedor, merma…"
+                        />
                         <InputError :message="movementForm.errors.note" />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
-                        <Button type="submit" :disabled="movementForm.processing">
-                            <Spinner v-if="movementForm.processing" class="size-4" />
-                            {{ movementForm.processing ? 'Guardando…' : 'Registrar' }}
+                        <Button
+                            type="submit"
+                            :disabled="movementForm.processing"
+                        >
+                            <Spinner
+                                v-if="movementForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                movementForm.processing
+                                    ? 'Guardando…'
+                                    : 'Registrar'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>

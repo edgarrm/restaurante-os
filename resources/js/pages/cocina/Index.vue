@@ -3,7 +3,13 @@ import { Head, router, usePoll } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardAction,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { index as cocinaIndex } from '@/routes/cocina';
 import { markReady as markReadyRoute } from '@/routes/cocina/items';
@@ -35,7 +41,10 @@ function isActionable(item: OrderItem): boolean {
 // re-render y recalcula el tiempo transcurrido con la misma frescura del
 // spec (3-5s) — no hace falta un `setInterval` adicional.
 function elapsedMinutes(dateString: string): number {
-    return Math.max(0, Math.floor((Date.now() - new Date(dateString).getTime()) / 60000));
+    return Math.max(
+        0,
+        Math.floor((Date.now() - new Date(dateString).getTime()) / 60000),
+    );
 }
 
 function isUrgent(order: Order): boolean {
@@ -54,7 +63,9 @@ const itemStatusLabel: Record<OrderItemStatus, string> = {
 // en este flujo, y el endpoint es idempotente ante doble tap.
 const markingItemId = ref<number | null>(null);
 const markingOrderId = ref<number | null>(null);
-const isBusy = computed(() => markingItemId.value !== null || markingOrderId.value !== null);
+const isBusy = computed(
+    () => markingItemId.value !== null || markingOrderId.value !== null,
+);
 
 function markItem(item: OrderItem) {
     if (isBusy.value) {
@@ -62,12 +73,16 @@ function markItem(item: OrderItem) {
     }
 
     markingItemId.value = item.id;
-    router.patch(markReadyRoute.url(item.id), {}, {
-        preserveScroll: true,
-        onFinish: () => {
-            markingItemId.value = null;
+    router.patch(
+        markReadyRoute.url(item.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                markingItemId.value = null;
+            },
         },
-    });
+    );
 }
 
 // No existe un endpoint de "marcar toda la orden" en el servidor (PASO 0,
@@ -79,7 +94,9 @@ function markOrder(order: Order) {
         return;
     }
 
-    const pendingIds = (order.items ?? []).filter(isActionable).map((item) => item.id);
+    const pendingIds = (order.items ?? [])
+        .filter(isActionable)
+        .map((item) => item.id);
 
     if (pendingIds.length === 0) {
         return;
@@ -96,10 +113,14 @@ function markOrder(order: Order) {
             return;
         }
 
-        router.patch(markReadyRoute.url(id), {}, {
-            preserveScroll: true,
-            onFinish: () => markNext(rest),
-        });
+        router.patch(
+            markReadyRoute.url(id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => markNext(rest),
+            },
+        );
     };
 
     markNext(pendingIds);
@@ -125,27 +146,45 @@ function markOrder(order: Order) {
             </p>
         </div>
 
-        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+            v-else
+            class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        >
             <Card
                 v-for="order in orders"
                 :key="order.id"
                 class="border-2"
-                :class="isUrgent(order) ? 'border-destructive/50 bg-destructive/5' : 'border-border'"
+                :class="
+                    isUrgent(order)
+                        ? 'border-destructive/50 bg-destructive/5'
+                        : 'border-border'
+                "
             >
                 <CardHeader>
-                    <CardTitle class="flex items-center gap-2 font-mono text-lg">
+                    <CardTitle
+                        class="flex items-center gap-2 font-mono text-lg"
+                    >
                         {{ order.table?.name ?? `Mesa #${order.table_id}` }}
                     </CardTitle>
-                    <Badge :variant="isUrgent(order) ? 'destructive' : 'outline'" class="w-fit">
+                    <Badge
+                        :variant="isUrgent(order) ? 'destructive' : 'outline'"
+                        class="w-fit"
+                    >
                         {{ elapsedMinutes(order.opened_at) }} min
                     </Badge>
                     <CardAction>
                         <Button
                             size="sm"
-                            :disabled="isBusy || !(order.items ?? []).some(isActionable)"
+                            :disabled="
+                                isBusy ||
+                                !(order.items ?? []).some(isActionable)
+                            "
                             @click="markOrder(order)"
                         >
-                            <Spinner v-if="markingOrderId === order.id" class="size-3.5" />
+                            <Spinner
+                                v-if="markingOrderId === order.id"
+                                class="size-3.5"
+                            />
                             Listo (orden)
                         </Button>
                     </CardAction>
@@ -158,10 +197,18 @@ function markOrder(order: Order) {
                             class="flex items-center justify-between gap-3"
                         >
                             <div class="flex flex-col gap-0.5">
-                                <span class="text-sm font-medium text-foreground">
-                                    {{ item.menu_item?.name ?? `Platillo #${item.menu_item_id}` }}
+                                <span
+                                    class="text-sm font-medium text-foreground"
+                                >
+                                    {{
+                                        item.menu_item?.name ??
+                                        `Platillo #${item.menu_item_id}`
+                                    }}
                                 </span>
-                                <span class="font-mono text-xs text-muted-foreground">×{{ item.quantity }}</span>
+                                <span
+                                    class="font-mono text-xs text-muted-foreground"
+                                    >×{{ item.quantity }}</span
+                                >
                             </div>
 
                             <Button
@@ -171,10 +218,15 @@ function markOrder(order: Order) {
                                 :disabled="isBusy"
                                 @click="markItem(item)"
                             >
-                                <Spinner v-if="markingItemId === item.id" class="size-3.5" />
+                                <Spinner
+                                    v-if="markingItemId === item.id"
+                                    class="size-3.5"
+                                />
                                 Listo
                             </Button>
-                            <Badge v-else variant="secondary">{{ itemStatusLabel[item.status] }}</Badge>
+                            <Badge v-else variant="secondary">{{
+                                itemStatusLabel[item.status]
+                            }}</Badge>
                         </li>
                     </ul>
                 </CardContent>
@@ -182,16 +234,25 @@ function markOrder(order: Order) {
         </div>
 
         <div v-if="completedOrders.length > 0" class="flex flex-col gap-3">
-            <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            <h2
+                class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+            >
                 Completadas
             </h2>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <Card v-for="order in completedOrders" :key="order.id" class="opacity-80">
+                <Card
+                    v-for="order in completedOrders"
+                    :key="order.id"
+                    class="opacity-80"
+                >
                     <CardHeader>
                         <CardTitle class="font-mono text-lg">
                             {{ order.table?.name ?? `Mesa #${order.table_id}` }}
                         </CardTitle>
-                        <Badge class="w-fit border-status-libre/40 bg-status-libre/10 text-status-libre" variant="outline">
+                        <Badge
+                            class="w-fit border-status-libre/40 bg-status-libre/10 text-status-libre"
+                            variant="outline"
+                        >
                             Lista
                         </Badge>
                     </CardHeader>
@@ -202,8 +263,13 @@ function markOrder(order: Order) {
                                 :key="item.id"
                                 class="flex items-center justify-between text-sm text-muted-foreground"
                             >
-                                <span>{{ item.menu_item?.name ?? `Platillo #${item.menu_item_id}` }}</span>
-                                <span class="font-mono">×{{ item.quantity }}</span>
+                                <span>{{
+                                    item.menu_item?.name ??
+                                    `Platillo #${item.menu_item_id}`
+                                }}</span>
+                                <span class="font-mono"
+                                    >×{{ item.quantity }}</span
+                                >
                             </li>
                         </ul>
                     </CardContent>

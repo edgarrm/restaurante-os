@@ -9,7 +9,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { isPasskeySupported, loginWithPasskey, PasskeyError } from '@/lib/passkeys';
+import {
+    isPasskeySupported,
+    loginWithPasskey,
+    PasskeyError,
+} from '@/lib/passkeys';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -36,7 +40,10 @@ async function onPasskeyLogin(): Promise<void> {
     try {
         await loginWithPasskey();
     } catch (error) {
-        passkeyError.value = error instanceof PasskeyError ? error.message : 'No fue posible iniciar sesión con passkey.';
+        passkeyError.value =
+            error instanceof PasskeyError
+                ? error.message
+                : 'No fue posible iniciar sesión con passkey.';
         usingPasskey.value = false;
     }
 }
@@ -52,7 +59,10 @@ async function onPasskeyLogin(): Promise<void> {
         {{ status }}
     </div>
 
-    <div v-if="passkeyError" class="mb-4 text-center text-sm font-medium text-destructive">
+    <div
+        v-if="passkeyError"
+        class="mb-4 text-center text-sm font-medium text-destructive"
+    >
         {{ passkeyError }}
     </div>
 

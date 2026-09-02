@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Boxes, CalendarClock, ChefHat, LayoutDashboard, LayoutGrid, Table2, Users, UtensilsCrossed } from '@lucide/vue';
+import {
+    Boxes,
+    CalendarClock,
+    ChefHat,
+    LayoutDashboard,
+    LayoutGrid,
+    Table2,
+    Users,
+    UtensilsCrossed,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -38,7 +47,11 @@ const mainNavItems = computed<NavItem[]>(() => {
 
     if (role.value === 'admin' || role.value === 'mesero') {
         items.push({ title: 'Mesas', href: mesasIndex(), icon: LayoutGrid });
-        items.push({ title: 'Reservas', href: reservasIndex(), icon: CalendarClock });
+        items.push({
+            title: 'Reservas',
+            href: reservasIndex(),
+            icon: CalendarClock,
+        });
     }
 
     if (role.value === 'admin' || role.value === 'cocina') {
@@ -46,11 +59,23 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
 
     if (role.value === 'admin') {
-        items.push({ title: 'Dashboard', href: dashboard(), icon: LayoutDashboard });
+        items.push({
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutDashboard,
+        });
         items.push({ title: 'Menú', href: menuIndex(), icon: UtensilsCrossed });
         items.push({ title: 'Staff', href: staffIndex(), icon: Users });
-        items.push({ title: 'Gestión de Mesas', href: tablesIndex(), icon: Table2 });
-        items.push({ title: 'Inventario', href: inventarioIndex(), icon: Boxes });
+        items.push({
+            title: 'Gestión de Mesas',
+            href: tablesIndex(),
+            icon: Table2,
+        });
+        items.push({
+            title: 'Inventario',
+            href: inventarioIndex(),
+            icon: Boxes,
+        });
     }
 
     return items;

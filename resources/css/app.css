@@ -13,9 +13,8 @@
        JetBrains Mono para tickets/mesas/montos ("technical, receipt-like
        feel that distinguishes metadata from menu items"). */
     --font-sans:
-        'Work Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Work Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-mono:
         'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro',
         Menlo, Consolas, 'DejaVu Sans Mono', monospace;

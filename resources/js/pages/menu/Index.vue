@@ -16,7 +16,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { index as menuIndex, store, toggleAvailability, update } from '@/routes/menu';
+import {
+    index as menuIndex,
+    store,
+    toggleAvailability,
+    update,
+} from '@/routes/menu';
 import type { MenuItem } from '@/types';
 
 const { menuItems } = defineProps<{
@@ -44,7 +49,9 @@ const categories = computed(() => {
 // Datalist de categorías ya usadas, para mitigar (sin normalizar del todo)
 // el riesgo conocido de _ai/specs/gestion-menu.spec.md: "categoría es texto
 // libre, dos platillos pueden usar categorías con distinta capitalización".
-const existingCategories = computed(() => Array.from(new Set(menuItems.map((item) => item.category))).sort());
+const existingCategories = computed(() =>
+    Array.from(new Set(menuItems.map((item) => item.category))).sort(),
+);
 
 function money(value: string | number): string {
     return `$${Number(value).toFixed(2)}`;
@@ -152,39 +159,71 @@ function toggleItemAvailability(item: MenuItem) {
                 No hay platillos configurados todavía.
             </p>
             <p class="max-w-sm text-sm text-muted-foreground">
-                Crea el primer platillo para que Toma de Pedido tenga qué ofrecer.
+                Crea el primer platillo para que Toma de Pedido tenga qué
+                ofrecer.
             </p>
             <Button @click="openCreate">Nuevo platillo</Button>
         </div>
 
         <div v-else class="flex flex-col gap-6">
-            <div v-for="[category, items] in categories" :key="category" class="flex flex-col gap-3">
-                <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            <div
+                v-for="[category, items] in categories"
+                :key="category"
+                class="flex flex-col gap-3"
+            >
+                <h2
+                    class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     {{ category }}
                 </h2>
-                <div class="divide-y divide-border overflow-hidden rounded-lg border">
+                <div
+                    class="divide-y divide-border overflow-hidden rounded-lg border"
+                >
                     <div
                         v-for="item in items"
                         :key="item.id"
                         class="flex flex-wrap items-center justify-between gap-3 bg-card p-4"
                     >
                         <div class="flex items-center gap-3">
-                            <span class="font-medium text-foreground">{{ item.name }}</span>
-                            <Badge :variant="item.available ? 'secondary' : 'outline'">
-                                {{ item.available ? 'Disponible' : 'No disponible' }}
+                            <span class="font-medium text-foreground">{{
+                                item.name
+                            }}</span>
+                            <Badge
+                                :variant="
+                                    item.available ? 'secondary' : 'outline'
+                                "
+                            >
+                                {{
+                                    item.available
+                                        ? 'Disponible'
+                                        : 'No disponible'
+                                }}
                             </Badge>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="font-mono text-sm text-muted-foreground">{{ money(item.price) }}</span>
-                            <Button size="sm" variant="outline" @click="openEdit(item)">Editar</Button>
+                            <span
+                                class="font-mono text-sm text-muted-foreground"
+                                >{{ money(item.price) }}</span
+                            >
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="openEdit(item)"
+                                >Editar</Button
+                            >
                             <Button
                                 size="sm"
                                 variant="ghost"
                                 :disabled="togglingId === item.id"
                                 @click="toggleItemAvailability(item)"
                             >
-                                <Spinner v-if="togglingId === item.id" class="size-3.5" />
-                                <span v-else>{{ item.available ? 'Desactivar' : 'Activar' }}</span>
+                                <Spinner
+                                    v-if="togglingId === item.id"
+                                    class="size-3.5"
+                                />
+                                <span v-else>{{
+                                    item.available ? 'Desactivar' : 'Activar'
+                                }}</span>
                             </Button>
                         </div>
                     </div>
@@ -193,7 +232,11 @@ function toggleItemAvailability(item: MenuItem) {
         </div>
 
         <datalist id="menu-categories">
-            <option v-for="category in existingCategories" :key="category" :value="category" />
+            <option
+                v-for="category in existingCategories"
+                :key="category"
+                :value="category"
+            />
         </datalist>
 
         <!-- Nuevo platillo -->
@@ -209,7 +252,11 @@ function toggleItemAvailability(item: MenuItem) {
 
                     <div class="grid gap-2">
                         <Label for="create-name">Nombre</Label>
-                        <Input id="create-name" v-model="createForm.name" autocomplete="off" />
+                        <Input
+                            id="create-name"
+                            v-model="createForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="createForm.errors.name" />
                     </div>
 
@@ -226,17 +273,32 @@ function toggleItemAvailability(item: MenuItem) {
 
                     <div class="grid gap-2">
                         <Label for="create-price">Precio</Label>
-                        <Input id="create-price" v-model="createForm.price" type="number" step="0.01" min="0.01" />
+                        <Input
+                            id="create-price"
+                            v-model="createForm.price"
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                        />
                         <InputError :message="createForm.errors.price" />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="createForm.processing">
-                            <Spinner v-if="createForm.processing" class="size-4" />
-                            {{ createForm.processing ? 'Guardando…' : 'Crear platillo' }}
+                            <Spinner
+                                v-if="createForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                createForm.processing
+                                    ? 'Guardando…'
+                                    : 'Crear platillo'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -244,19 +306,27 @@ function toggleItemAvailability(item: MenuItem) {
         </Dialog>
 
         <!-- Editar platillo -->
-        <Dialog :open="editingItem !== null" @update:open="(value) => !value && closeEdit()">
+        <Dialog
+            :open="editingItem !== null"
+            @update:open="(value) => !value && closeEdit()"
+        >
             <DialogContent>
                 <form class="space-y-6" @submit.prevent="submitEdit">
                     <DialogHeader>
                         <DialogTitle>Editar platillo</DialogTitle>
                         <DialogDescription>
-                            Cambiar el precio no afecta cuentas ya abiertas con este platillo.
+                            Cambiar el precio no afecta cuentas ya abiertas con
+                            este platillo.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div class="grid gap-2">
                         <Label for="edit-name">Nombre</Label>
-                        <Input id="edit-name" v-model="editForm.name" autocomplete="off" />
+                        <Input
+                            id="edit-name"
+                            v-model="editForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="editForm.errors.name" />
                     </div>
 
@@ -273,17 +343,32 @@ function toggleItemAvailability(item: MenuItem) {
 
                     <div class="grid gap-2">
                         <Label for="edit-price">Precio</Label>
-                        <Input id="edit-price" v-model="editForm.price" type="number" step="0.01" min="0.01" />
+                        <Input
+                            id="edit-price"
+                            v-model="editForm.price"
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                        />
                         <InputError :message="editForm.errors.price" />
                     </div>
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="editForm.processing">
-                            <Spinner v-if="editForm.processing" class="size-4" />
-                            {{ editForm.processing ? 'Guardando…' : 'Guardar cambios' }}
+                            <Spinner
+                                v-if="editForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                editForm.processing
+                                    ? 'Guardando…'
+                                    : 'Guardar cambios'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>

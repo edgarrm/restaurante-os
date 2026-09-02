@@ -49,7 +49,9 @@ defineOptions({
             v-slot="{ errors, processing }"
         >
             <div class="grid gap-2">
-                <Label for="pin">{{ props.hasPin ? 'Nuevo PIN' : 'PIN' }}</Label>
+                <Label for="pin">{{
+                    props.hasPin ? 'Nuevo PIN' : 'PIN'
+                }}</Label>
                 <Input
                     id="pin"
                     name="pin"

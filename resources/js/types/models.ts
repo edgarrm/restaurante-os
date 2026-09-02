@@ -19,7 +19,13 @@ export interface MenuItem {
     available: boolean;
 }
 
-export type OrderStatus = 'abierta' | 'enviada_cocina' | 'lista' | 'por_cobrar' | 'pagada' | 'cancelada';
+export type OrderStatus =
+    | 'abierta'
+    | 'enviada_cocina'
+    | 'lista'
+    | 'por_cobrar'
+    | 'pagada'
+    | 'cancelada';
 
 export type OrderItemStatus = 'pendiente' | 'preparando' | 'listo' | 'servido';
 

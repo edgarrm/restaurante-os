@@ -22,7 +22,8 @@ export function isPasskeySupported(): boolean {
     return (
         typeof window !== 'undefined' &&
         typeof window.PublicKeyCredential !== 'undefined' &&
-        typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
+        typeof PublicKeyCredential.parseCreationOptionsFromJSON ===
+            'function' &&
         typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
     );
 }
@@ -84,19 +85,26 @@ type PasskeyOptionsResponse<T> = { options: T };
 /**
  * Registra una passkey nueva para el usuario autenticado.
  */
-export async function registerPasskey(name: string): Promise<{ id: string; name: string }> {
-    const { options } = await getJson<PasskeyOptionsResponse<PublicKeyCredentialCreationOptionsJSON>>(
-        passkey.registrationOptions.url(),
-    );
+export async function registerPasskey(
+    name: string,
+): Promise<{ id: string; name: string }> {
+    const { options } = await getJson<
+        PasskeyOptionsResponse<PublicKeyCredentialCreationOptionsJSON>
+    >(passkey.registrationOptions.url());
 
     let credential: Credential | null;
 
     try {
         credential = await navigator.credentials.create({
-            publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options),
+            publicKey:
+                PublicKeyCredential.parseCreationOptionsFromJSON(options),
         });
     } catch (error) {
-        throw new PasskeyError(isCancellation(error) ? 'Operación cancelada.' : 'No fue posible crear la passkey.');
+        throw new PasskeyError(
+            isCancellation(error)
+                ? 'Operación cancelada.'
+                : 'No fue posible crear la passkey.',
+        );
     }
 
     if (!(credential instanceof PublicKeyCredential)) {
@@ -117,9 +125,9 @@ export async function registerPasskey(name: string): Promise<{ id: string; name:
  * calculado por el servidor) en vez de dejar la SPA en el estado del login.
  */
 export async function loginWithPasskey(remember = false): Promise<void> {
-    const { options } = await getJson<PasskeyOptionsResponse<PublicKeyCredentialRequestOptionsJSON>>(
-        passkey.loginOptions.url(),
-    );
+    const { options } = await getJson<
+        PasskeyOptionsResponse<PublicKeyCredentialRequestOptionsJSON>
+    >(passkey.loginOptions.url());
 
     let credential: Credential | null;
 
@@ -128,7 +136,11 @@ export async function loginWithPasskey(remember = false): Promise<void> {
             publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options),
         });
     } catch (error) {
-        throw new PasskeyError(isCancellation(error) ? 'Operación cancelada.' : 'No se encontró ninguna passkey.');
+        throw new PasskeyError(
+            isCancellation(error)
+                ? 'Operación cancelada.'
+                : 'No se encontró ninguna passkey.',
+        );
     }
 
     if (!(credential instanceof PublicKeyCredential)) {

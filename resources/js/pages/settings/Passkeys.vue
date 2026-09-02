@@ -70,7 +70,11 @@ async function onRegister(): Promise<void> {
         toast.success('Passkey registrada.');
         refresh();
     } catch (error) {
-        toast.error(error instanceof PasskeyError ? error.message : 'No fue posible registrar la passkey.');
+        toast.error(
+            error instanceof PasskeyError
+                ? error.message
+                : 'No fue posible registrar la passkey.',
+        );
     } finally {
         registering.value = false;
     }
@@ -84,7 +88,11 @@ async function onDelete(passkey: PasskeyItem): Promise<void> {
         toast.success('Passkey revocada.');
         refresh();
     } catch (error) {
-        toast.error(error instanceof PasskeyError ? error.message : 'No fue posible revocar la passkey.');
+        toast.error(
+            error instanceof PasskeyError
+                ? error.message
+                : 'No fue posible revocar la passkey.',
+        );
     } finally {
         deletingId.value = null;
     }
@@ -111,7 +119,10 @@ function formatDate(value: string | null): string {
             description="Ingresa sin contraseña usando Face ID, Touch ID o el PIN de tu dispositivo. Cada passkey queda ligada a este restaurante — no funciona en otro."
         />
 
-        <div v-if="!supported" class="rounded-lg border p-4 text-sm text-muted-foreground">
+        <div
+            v-if="!supported"
+            class="rounded-lg border p-4 text-sm text-muted-foreground"
+        >
             Este navegador o dispositivo no soporta passkeys. Puedes seguir
             iniciando sesión con tu contraseña normalmente.
         </div>
@@ -138,7 +149,10 @@ function formatDate(value: string | null): string {
                 </Button>
             </div>
 
-            <div v-if="passkeys.length === 0" class="text-sm text-muted-foreground">
+            <div
+                v-if="passkeys.length === 0"
+                class="text-sm text-muted-foreground"
+            >
                 Todavía no tienes ninguna passkey registrada.
             </div>
 
@@ -151,8 +165,8 @@ function formatDate(value: string | null): string {
                     <div class="space-y-0.5">
                         <p class="font-medium">{{ item.name }}</p>
                         <p class="text-sm text-muted-foreground">
-                            {{ item.authenticator ?? 'Autenticador' }} ·
-                            Último uso: {{ formatDate(item.lastUsedAt) }}
+                            {{ item.authenticator ?? 'Autenticador' }} · Último
+                            uso: {{ formatDate(item.lastUsedAt) }}
                         </p>
                     </div>
 
@@ -169,18 +183,21 @@ function formatDate(value: string | null): string {
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader class="space-y-3">
-                                <DialogTitle>¿Revocar "{{ item.name }}"?</DialogTitle>
+                                <DialogTitle
+                                    >¿Revocar "{{ item.name }}"?</DialogTitle
+                                >
                                 <DialogDescription>
                                     No podrás volver a usar esta passkey para
-                                    iniciar sesión. Si perdiste el
-                                    dispositivo, esta es la forma correcta de
-                                    revocarla.
+                                    iniciar sesión. Si perdiste el dispositivo,
+                                    esta es la forma correcta de revocarla.
                                 </DialogDescription>
                             </DialogHeader>
 
                             <DialogFooter class="gap-2">
                                 <DialogClose as-child>
-                                    <Button variant="secondary">Cancelar</Button>
+                                    <Button variant="secondary"
+                                        >Cancelar</Button
+                                    >
                                 </DialogClose>
 
                                 <DialogClose as-child>

@@ -165,22 +165,37 @@ function roleLabel(role: string): string {
             <Button @click="openCreate">Nueva cuenta</Button>
         </div>
 
-        <div v-else class="divide-y divide-border overflow-hidden rounded-lg border">
+        <div
+            v-else
+            class="divide-y divide-border overflow-hidden rounded-lg border"
+        >
             <div
                 v-for="member in staff"
                 :key="member.id"
                 class="flex flex-wrap items-center justify-between gap-3 bg-card p-4"
             >
                 <div class="flex flex-col gap-0.5">
-                    <span class="font-medium text-foreground">{{ member.name }}</span>
-                    <span class="text-sm text-muted-foreground">{{ member.email }}</span>
+                    <span class="font-medium text-foreground">{{
+                        member.name
+                    }}</span>
+                    <span class="text-sm text-muted-foreground">{{
+                        member.email
+                    }}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Badge variant="secondary">{{ roleLabel(member.role) }}</Badge>
-                    <Badge :variant="member.is_active ? 'secondary' : 'outline'">
+                    <Badge variant="secondary">{{
+                        roleLabel(member.role)
+                    }}</Badge>
+                    <Badge
+                        :variant="member.is_active ? 'secondary' : 'outline'"
+                    >
                         {{ member.is_active ? 'Activo' : 'Inactivo' }}
                     </Badge>
-                    <Button size="sm" variant="outline" @click="openEdit(member)">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="openEdit(member)"
+                    >
                         Editar rol
                     </Button>
                     <Button
@@ -202,25 +217,40 @@ function roleLabel(role: string): string {
                     <DialogHeader>
                         <DialogTitle>Nueva cuenta</DialogTitle>
                         <DialogDescription>
-                            La cuenta puede iniciar sesión de inmediato con estas credenciales.
+                            La cuenta puede iniciar sesión de inmediato con
+                            estas credenciales.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div class="grid gap-2">
                         <Label for="create-name">Nombre</Label>
-                        <Input id="create-name" v-model="createForm.name" autocomplete="off" />
+                        <Input
+                            id="create-name"
+                            v-model="createForm.name"
+                            autocomplete="off"
+                        />
                         <InputError :message="createForm.errors.name" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="create-email">Correo</Label>
-                        <Input id="create-email" v-model="createForm.email" type="email" autocomplete="off" />
+                        <Input
+                            id="create-email"
+                            v-model="createForm.email"
+                            type="email"
+                            autocomplete="off"
+                        />
                         <InputError :message="createForm.errors.email" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="create-password">Contraseña temporal</Label>
-                        <Input id="create-password" v-model="createForm.password" type="password" autocomplete="new-password" />
+                        <Input
+                            id="create-password"
+                            v-model="createForm.password"
+                            type="password"
+                            autocomplete="new-password"
+                        />
                         <InputError :message="createForm.errors.password" />
                     </div>
 
@@ -240,11 +270,20 @@ function roleLabel(role: string): string {
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="createForm.processing">
-                            <Spinner v-if="createForm.processing" class="size-4" />
-                            {{ createForm.processing ? 'Guardando…' : 'Crear cuenta' }}
+                            <Spinner
+                                v-if="createForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                createForm.processing
+                                    ? 'Guardando…'
+                                    : 'Crear cuenta'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -252,13 +291,17 @@ function roleLabel(role: string): string {
         </Dialog>
 
         <!-- Editar rol -->
-        <Dialog :open="editingMember !== null" @update:open="(value) => !value && closeEdit()">
+        <Dialog
+            :open="editingMember !== null"
+            @update:open="(value) => !value && closeEdit()"
+        >
             <DialogContent>
                 <form class="space-y-6" @submit.prevent="submitEdit">
                     <DialogHeader>
                         <DialogTitle>Editar rol</DialogTitle>
                         <DialogDescription>
-                            El cambio aplica en la siguiente request de {{ editingMember?.name }}.
+                            El cambio aplica en la siguiente request de
+                            {{ editingMember?.name }}.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -278,11 +321,20 @@ function roleLabel(role: string): string {
 
                     <DialogFooter class="gap-2">
                         <DialogClose as-child>
-                            <Button type="button" variant="secondary">Cancelar</Button>
+                            <Button type="button" variant="secondary"
+                                >Cancelar</Button
+                            >
                         </DialogClose>
                         <Button type="submit" :disabled="editForm.processing">
-                            <Spinner v-if="editForm.processing" class="size-4" />
-                            {{ editForm.processing ? 'Guardando…' : 'Guardar cambios' }}
+                            <Spinner
+                                v-if="editForm.processing"
+                                class="size-4"
+                            />
+                            {{
+                                editForm.processing
+                                    ? 'Guardando…'
+                                    : 'Guardar cambios'
+                            }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -290,7 +342,10 @@ function roleLabel(role: string): string {
         </Dialog>
 
         <!-- Confirmar desactivación -->
-        <Dialog :open="deactivatingMember !== null" @update:open="(value) => !value && closeDeactivate()">
+        <Dialog
+            :open="deactivatingMember !== null"
+            @update:open="(value) => !value && closeDeactivate()"
+        >
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>¿Desactivar cuenta?</DialogTitle>
@@ -300,7 +355,11 @@ function roleLabel(role: string): string {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter class="gap-2">
-                    <Button type="button" variant="secondary" @click="closeDeactivate">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        @click="closeDeactivate"
+                    >
                         Cancelar
                     </Button>
                     <Button

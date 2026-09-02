@@ -49,7 +49,9 @@ const statusDotClasses: Record<TableStatus, string> = {
  * _ai/specs/mapa-de-mesas.spec.md, Happy Path #4-5).
  */
 function destinationFor(table: Table) {
-    return table.status === 'por_cobrar' ? cobroShow(table.id) : pedidoShow(table.id);
+    return table.status === 'por_cobrar'
+        ? cobroShow(table.id)
+        : pedidoShow(table.id);
 }
 </script>
 
@@ -96,7 +98,9 @@ function destinationFor(table: Table) {
                 :class="statusClasses[table.status]"
             >
                 <div class="flex items-start justify-between gap-2">
-                    <span class="font-mono text-lg font-semibold text-foreground">
+                    <span
+                        class="font-mono text-lg font-semibold text-foreground"
+                    >
                         {{ table.name }}
                     </span>
                     <span
@@ -105,11 +109,12 @@ function destinationFor(table: Table) {
                     />
                 </div>
                 <div class="flex flex-col gap-1 text-sm">
-                    <span class="whitespace-nowrap font-medium text-foreground">
+                    <span class="font-medium whitespace-nowrap text-foreground">
                         {{ statusLabel[table.status] }}
                     </span>
                     <span class="whitespace-nowrap text-muted-foreground">
-                        {{ table.capacity }} {{ table.capacity === 1 ? 'persona' : 'personas' }}
+                        {{ table.capacity }}
+                        {{ table.capacity === 1 ? 'persona' : 'personas' }}
                     </span>
                 </div>
             </Link>

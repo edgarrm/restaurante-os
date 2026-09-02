@@ -3,7 +3,12 @@ import { Head, usePoll } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import type { Reservation, ReservationStatus, Table, TableStatus } from '@/types';
+import type {
+    Reservation,
+    ReservationStatus,
+    Table,
+    TableStatus,
+} from '@/types';
 
 const { salesTotal, activeTables, todayReservations } = defineProps<{
     salesTotal: number;
@@ -43,7 +48,10 @@ const reservationStatusLabel: Record<ReservationStatus, string> = {
     cancelada: 'Cancelada',
 };
 
-const reservationStatusVariant: Record<ReservationStatus, 'secondary' | 'default' | 'destructive'> = {
+const reservationStatusVariant: Record<
+    ReservationStatus,
+    'secondary' | 'default' | 'destructive'
+> = {
     confirmada: 'secondary',
     sentada: 'default',
     cancelada: 'destructive',
@@ -74,7 +82,9 @@ function formatTime(reservedAt: string): string {
         <div class="grid gap-4 sm:grid-cols-3">
             <Card>
                 <CardHeader>
-                    <CardTitle class="text-sm font-medium text-muted-foreground">
+                    <CardTitle
+                        class="text-sm font-medium text-muted-foreground"
+                    >
                         Ventas de hoy
                     </CardTitle>
                 </CardHeader>
@@ -87,7 +97,9 @@ function formatTime(reservedAt: string): string {
 
             <Card>
                 <CardHeader>
-                    <CardTitle class="text-sm font-medium text-muted-foreground">
+                    <CardTitle
+                        class="text-sm font-medium text-muted-foreground"
+                    >
                         Mesas activas
                     </CardTitle>
                 </CardHeader>
@@ -100,7 +112,9 @@ function formatTime(reservedAt: string): string {
 
             <Card>
                 <CardHeader>
-                    <CardTitle class="text-sm font-medium text-muted-foreground">
+                    <CardTitle
+                        class="text-sm font-medium text-muted-foreground"
+                    >
                         Reservas de hoy
                     </CardTitle>
                 </CardHeader>
@@ -130,11 +144,18 @@ function formatTime(reservedAt: string): string {
                             :key="table.id"
                             class="flex items-center justify-between gap-3 rounded-lg border p-3"
                         >
-                            <span class="flex items-center gap-2 font-mono font-medium text-foreground">
-                                <span class="size-2.5 shrink-0 rounded-full" :class="statusDotClasses[table.status]" />
+                            <span
+                                class="flex items-center gap-2 font-mono font-medium text-foreground"
+                            >
+                                <span
+                                    class="size-2.5 shrink-0 rounded-full"
+                                    :class="statusDotClasses[table.status]"
+                                />
                                 {{ table.name }}
                             </span>
-                            <span class="text-sm text-muted-foreground">{{ statusLabel[table.status] }}</span>
+                            <span class="text-sm text-muted-foreground">{{
+                                statusLabel[table.status]
+                            }}</span>
                         </li>
                     </ul>
                 </CardContent>
@@ -158,14 +179,29 @@ function formatTime(reservedAt: string): string {
                             class="flex items-center justify-between gap-3 rounded-lg border p-3"
                         >
                             <div class="flex flex-col gap-0.5">
-                                <span class="font-medium text-foreground">{{ reservation.customer_name }}</span>
+                                <span class="font-medium text-foreground">{{
+                                    reservation.customer_name
+                                }}</span>
                                 <span class="text-sm text-muted-foreground">
-                                    {{ formatTime(reservation.reserved_at) }} · {{ reservation.party_size }}
-                                    {{ reservation.party_size === 1 ? 'persona' : 'personas' }} ·
-                                    {{ reservation.table?.name ?? 'Sin mesa asignada' }}
+                                    {{ formatTime(reservation.reserved_at) }} ·
+                                    {{ reservation.party_size }}
+                                    {{
+                                        reservation.party_size === 1
+                                            ? 'persona'
+                                            : 'personas'
+                                    }}
+                                    ·
+                                    {{
+                                        reservation.table?.name ??
+                                        'Sin mesa asignada'
+                                    }}
                                 </span>
                             </div>
-                            <Badge :variant="reservationStatusVariant[reservation.status]">
+                            <Badge
+                                :variant="
+                                    reservationStatusVariant[reservation.status]
+                                "
+                            >
                                 {{ reservationStatusLabel[reservation.status] }}
                             </Badge>
                         </li>
