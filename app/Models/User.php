@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -32,10 +34,10 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'pin_hash', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToTenant, HasFactory, Notifiable;
+    use BelongsToTenant, HasFactory, Notifiable, PasskeyAuthenticatable;
 
     /**
      * Get the attributes that should be cast.

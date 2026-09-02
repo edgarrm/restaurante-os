@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ScopePasskeysToTenantDomain;
 use Laravel\Fortify\Features;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -111,6 +112,18 @@ return [
     | (F-02) ata la sesión resultante a ese tenant. Mismo stack que el grupo
     | de `routes/tenant.php` — decisión registrada en decision-log.md.
     |
+    |
+    | ScopePasskeysToTenantDomain (_ai/specs/passkeys.spec.md, PASO 0,
+    | F-01/F-05 para passkeys): Fortify registra las rutas de
+    | laravel/passkeys dentro de este MISMO grupo (ver
+    | Laravel\Fortify\FortifyServiceProvider::configurePasskeys(), que
+    | ademas bindea config('passkeys.middleware') a este mismo array) - asi
+    | que este middleware ata el Relying Party ID de WebAuthn al subdominio
+    | real de la peticion en vez del config('app.url') global, para las
+    | rutas de passkeys. Para el resto de rutas de este grupo (login,
+    | logout, password reset, 2FA) es un no-op barato (dos claves de config
+    | que nadie mas lee).
+    |
     */
 
     'middleware' => [
@@ -118,6 +131,7 @@ return [
         InitializeTenancyByDomain::class,
         PreventAccessFromCentralDomains::class,
         ScopeSessions::class,
+        ScopePasskeysToTenantDomain::class,
     ],
 
     /*
@@ -133,6 +147,11 @@ return [
 
     'limiters' => [
         'login' => 'login',
+        // Sin esto, `configurePasskeys()` deja `passkeys.throttle` en null
+        // (sin limitador) — confirmado en runtime. El paquete crudo trae
+        // `throttle:6,1` como default; se restaura el mismo valor vía este
+        // limiter (_ai/specs/passkeys.spec.md).
+        'passkeys' => 'passkeys',
     ],
 
     /*
@@ -161,6 +180,11 @@ return [
 
     'features' => [
         Features::resetPasswords(),
+        // Login sin contraseña, adicional al de contraseña
+        // (_ai/specs/passkeys.spec.md). `confirmPassword` (default true) es
+        // lo que gatea `/user/passkeys/*` con `password.confirm` — mismo
+        // criterio que "revocar con tu contraseña normal" del spec.
+        Features::passkeys(),
     ],
 
 ];

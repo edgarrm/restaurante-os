@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Fortify\AuthorizePasskeyLogin;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Models\User;
@@ -16,6 +17,8 @@ use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Passkeys\Contracts\PasskeyLoginResponse as PasskeyLoginResponseContract;
+use Laravel\Passkeys\Passkeys;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,10 @@ class FortifyServiceProvider extends ServiceProvider
         // Redirect post-login por rol — ver App\Http\Responses\LoginResponse
         // y _ai/specs/dashboard-del-dia.spec.md (PASO 0).
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+
+        // Mismo binding, para el login por passkey — ver
+        // _ai/specs/passkeys.spec.md (PASO 0, "Redirect post-login por rol").
+        $this->app->singleton(PasskeyLoginResponseContract::class, LoginResponse::class);
     }
 
     /**
@@ -37,6 +44,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configurePasskeys();
     }
 
     /**
@@ -100,5 +108,26 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        // Sin username disponible (login por passkey es discoverable — ver
+        // _ai/specs/passkeys.spec.md), throttle por IP. Mismo valor que el
+        // default del paquete crudo (`throttle:6,1`), que el bridge de
+        // Fortify (`configurePasskeys()`) deja en null si no se registra
+        // este limiter explícitamente.
+        RateLimiter::for('passkeys', function (Request $request) {
+            return Limit::perMinute(6)->by($request->ip());
+        });
+
+    }
+
+    /**
+     * Configure passkeys (_ai/specs/passkeys.spec.md, PASO 0).
+     */
+    private function configurePasskeys(): void
+    {
+        // F-01/F-05: niega el login si el usuario resuelto es null (passkey
+        // de otro tenant — ver App\Actions\Fortify\AuthorizePasskeyLogin) o
+        // si la cuenta está desactivada (mismo criterio que
+        // configureActions() para el login por contraseña).
+        Passkeys::authorizeLoginUsing(app(AuthorizePasskeyLogin::class));
     }
 }
