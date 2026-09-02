@@ -165,22 +165,39 @@ Route::middleware([
         ->name('cobro.')
         ->group(function () {
             Route::get('/', [PaymentController::class, 'show'])->name('show');
-            Route::post('/', [PaymentController::class, 'close'])->name('close');
+
+            // F-07 (_ai/docs/threat-model.md — ver
+            // _ai/specs/bloqueo-tablet-pin.spec.md): `payment-pin` solo en
+            // los 3 endpoints que registran un Payment real, nunca en
+            // `show` — navegar a la pantalla de Cobro no pide PIN, solo el
+            // submit del pago.
+            Route::post('/', [PaymentController::class, 'close'])->middleware('payment-pin')->name('close');
 
             // División de Cuenta (_ai/specs/division-de-cuenta.spec.md,
             // #12, US-3.2): registra un pago que puede ser parcial — a
             // diferencia de `close`, no exige cubrir el total. Mismo
             // middleware/grupo, ruta hermana en vez de query param, para no
             // sobrecargar `close` con dos comportamientos distintos.
-            Route::post('/pagos', [PaymentController::class, 'addPayment'])->name('pagos.store');
+            Route::post('/pagos', [PaymentController::class, 'addPayment'])->middleware('payment-pin')->name('pagos.store');
 
             // Split por ítems (REDEV-29, _ai/specs/division-de-cuenta.spec.md,
             // "Ampliación"): el monto se calcula en el servidor a partir de
             // los OrderItems seleccionados, nunca del cliente. Nombre de ruta
             // en camelCase (`porItems`) para que Wayfinder genere un
             // identificador JS válido.
-            Route::post('/pagos/por-items', [PaymentController::class, 'addPaymentByItems'])->name('pagos.porItems');
+            Route::post('/pagos/por-items', [PaymentController::class, 'addPaymentByItems'])->middleware('payment-pin')->name('pagos.porItems');
         });
+
+    // Verificación de PIN de cobro (F-07 — ver
+    // _ai/specs/bloqueo-tablet-pin.spec.md). Sin `{table}`: la
+    // verificación es sobre el usuario autenticado, no sobre una orden
+    // específica — el modal de Cobro.vue la llama antes de reintentar el
+    // pago original. Mismos roles que el grupo `cobro.*` (`role:admin,
+    // mesero`): `cocina` nunca llega a un endpoint de cobro, así que
+    // tampoco necesita verificar un PIN.
+    Route::middleware(['auth', 'role:admin,mesero'])
+        ->post('/pin/verificar', [PaymentController::class, 'verifyPin'])
+        ->name('pin.verify');
 
     // Reservas (_ai/specs/reservas.spec.md, #8). Mismo patrón que
     // Toma de Pedido/Cobro: `role:admin,mesero` resuelve F-06 para esta

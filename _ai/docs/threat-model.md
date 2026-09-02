@@ -217,22 +217,41 @@ inconsistente y fácil de omitir en una ruta nueva.
 
 ## F-07 — MEDIO: Tablet compartida y sesión sin bloqueo por inactividad
 
-**Estado:** 🟡 Abierto
+**Estado:** 🟢 Resuelto (2026-08-26) · **Verificado**
 
-Riesgo específico de este producto: las tablets viven en el piso del
-restaurante y en cocina, compartidas, frecuentemente desatendidas.
-`SESSION_LIFETIME=120` (2 horas) sin bloqueo por inactividad significa que
-cualquiera que tome una tablet desatendida opera como el mesero que la dejó —
-puede tomar pedidos, **cobrar cuentas** y (con F-03 sin resolver) sin dejar
-rastro de quién fue.
+Resuelto en `_ai/specs/bloqueo-tablet-pin.spec.md`: PIN corto (4 dígitos) por
+usuario, autoconfigurado en `/settings/pin` (autoservicio, mismo patrón que
+el cambio de contraseña). Gatea únicamente el *submit* de los 3 endpoints que
+registran un `Payment` real (`PaymentController::close()`/`addPayment()`/
+`addPaymentByItems()`, middleware `EnsurePaymentPinVerified`) — nunca la
+navegación a la pantalla de Cobro ni ninguna otra acción, preservando "cero
+fricción" para todo lo que no mueve dinero. Umbral: 5 minutos desde la
+última verificación exitosa, guardada como `pin_verified_at` en la sesión
+del navegador (no en la base de datos — por dispositivo físico, no por
+usuario global). `pin_hash` hasheado con `Hash::make()`, nunca en `#[Fillable]`
+de `User` (mismo trap que `Table.status`/`MenuItem.available`, ver
+`.ai/rules/actions.md`), fijado con `forceFill()->save()`. Rate limiting de 5
+intentos/minuto por usuario (`VerifyPaymentPinAction`, mismo criterio que el
+login de Fortify). La verificación nunca hace una query "buscar usuario por
+PIN" — solo compara el hash de `$request->user()`, así que un PIN correcto
+de otro usuario (o de otro tenant, F-05) nunca puede pasar la verificación de
+la sesión actual. Verificado con `tests/Unit/Actions/Staff/SetPaymentPinActionTest.php`,
+`tests/Unit/Actions/Staff/VerifyPaymentPinActionTest.php` y
+`tests/Feature/BloqueoTabletPinTest.php` (incluye casos F-05), más
+verificación visual en browser real (PIN configurado, cobro bloqueado sin
+verificar, modal de PIN, verificación correcta reintenta el pago
+automáticamente, PIN incorrecto rechazado sin filtrar información, light y
+dark mode, sin errores de consola).
 
-Tensión real: el diferenciador del producto es "cero fricción" — un bloqueo
-agresivo con contraseña contradice directamente ese objetivo. Un PIN corto por
-usuario, o bloqueo solo para acciones sensibles (cobro, anulación), es el tipo
-de balance a decidir con el cliente ancla, no unilateralmente.
-
-**Mitigación:** decisión de producto pendiente. Registrada en
-`decision-log.md`.
+Riesgo original: las tablets viven en el piso del restaurante y en cocina,
+compartidas, frecuentemente desatendidas. `SESSION_LIFETIME=120` (2 horas)
+sin bloqueo por inactividad significaba que cualquiera que tomara una tablet
+desatendida operaba como el mesero que la dejó — podía tomar pedidos,
+**cobrar cuentas** y (con F-03 entonces sin resolver) sin dejar rastro de
+quién fue. El diferenciador del producto es "cero fricción" — un bloqueo
+agresivo con contraseña habría contradicho ese objetivo directamente; el PIN
+corto por acción sensible es el balance descrito textualmente en la versión
+original de este hallazgo.
 
 ---
 
@@ -292,7 +311,7 @@ quede en un solo inventario junto al resto de vectores.
 | F-04 | 🟡 Medio | Mass assignment de `role`/`tenant_id` | No (preventivo) |
 | F-05 | 🟡 Medio | IDOR entre tenants sin cobertura de tests | No (preventivo) |
 | F-06 | 🟡 Medio → 🟢 Resuelto | Sin spec del middleware de roles | Sí, para features con rol |
-| F-07 | 🟡 Medio | Tablet compartida sin bloqueo | No (decisión de producto) |
+| F-07 | 🟡 Medio → 🟢 Resuelto | Tablet compartida sin bloqueo — PIN de cobro | No (decisión de producto) |
 | F-08 | 🟢 Bajo | Endurecimiento de despliegue | No (previo a producción) |
 | F-09 | 🟢 Bajo | Enumeración de cuentas entre tenants | No |
 | F-10 | ⚪ Info | `withoutTenancy()` disponible | No |

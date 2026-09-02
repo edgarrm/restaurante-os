@@ -1768,3 +1768,120 @@ Archivos: `app/Http/Controllers/PaymentController.php`,
 `resources/js/components/PaymentMethodSelector.vue` (nuevo),
 `resources/js/lib/paymentMethods.ts` (nuevo). Rama
 `refactor/cobro-duplicacion-query-metodo-pago`.
+
+### 2026-08-26 — F-07 resuelto: PIN de re-autenticación antes de cobrar
+
+Cierra el último hallazgo abierto del threat model del 2026-08-10 (F-08/F-09/
+F-10 quedan como bajos/preventivos, no bloqueantes). Nuevo spec
+`_ai/specs/bloqueo-tablet-pin.spec.md`, PASO 0 documenta 5 decisiones de
+mecánica sin `AskUserQuestion` disponible (sesión en background) — resumen:
+
+- **PIN obligatorio para cobrar, no solo "si ya lo configuraste"**: un
+  admin/mesero sin `pin_hash` también queda bloqueado en el gate (mensaje
+  distinto: "configura tu PIN" en vez de "ingresa tu PIN"). Decidido así
+  porque la alternativa (gate solo si ya configuraste uno) deja la
+  mitigación completamente opcional — el riesgo original de F-07 seguiría
+  abierto para cualquier cuenta que nunca abra Settings, que es el
+  comportamiento por defecto de toda cuenta nueva.
+- **`pin_verified_at` en sesión (`now()->timestamp`, entero), no en BD**:
+  intencional — verificar el PIN en la tablet A no debe "contar" para la
+  tablet B, exactamente el vector que describe F-07.
+- **Comunicación al frontend: combinación, no una sola pieza.** El gate
+  (`EnsurePaymentPinVerified`, middleware nuevo, alias `payment-pin`) lanza
+  `ValidationException::withMessages()` con dos keys distintas —
+  `pin_not_set` (banner + link a Settings, sin modal) vs. `pin` (abre el
+  modal) — más un endpoint de verificación separado
+  (`POST /pin/verificar`, `PaymentController::verifyPin`) que el modal llama
+  antes de reintentar el pago original. Un solo mecanismo no alcanzaba: el
+  gate solo no tiene forma de decirle al frontend "ahora sí, reintenta" sin
+  una segunda petición, y un endpoint de verificación previo por sí solo
+  obligaría a un round-trip extra en el caso común (verificación todavía
+  vigente).
+- **Rate limiting por usuario, no por IP+usuario** (a diferencia del login
+  de Fortify): la tablet compartida tiene una sola IP para todos los
+  intentos, así que el vector real es "alguien con la tablet física
+  adivinando el PIN de la cuenta ya autenticada" — la IP no aporta nada
+  aquí. 5 intentos/minuto, implementado dentro de `VerifyPaymentPinAction`
+  (no como named limiter de Fortify) porque necesita convivir con la
+  comparación de hash en la misma unidad.
+- **Actions en `app/Actions/Staff/`** (`SetPaymentPinAction`,
+  `VerifyPaymentPinAction`), no en `app/Actions/Fortify/`: el PIN es lógica
+  de dominio propia sobre una cuenta de staff, no un punto de extensión que
+  Fortify invoca directamente.
+
+**Backend**: migración `pin_hash` nullable en `users` (después de
+`password`). `User::pin_hash` fuera de `#[Fillable]` (F-04) y agregado a
+`#[Hidden]` — mismo trap que `Table.status`/`MenuItem.available` documentado
+en `.ai/rules/actions.md`, verificado con un test que confirma que
+`fill()`/`update()` con `pin_hash` no-op silenciosamente. `EnsurePaymentPinVerified`
+aplicado solo a los 3 POST de cobro (`close`, `pagos.store`, `pagos.porItems`)
+en `routes/tenant.php`, nunca a `show` — navegar a Cobro nunca pide PIN.
+Nueva ruta `POST /pin/verificar` (`pin.verify`), mismo grupo de roles
+(`role:admin,mesero`) que el resto de `cobro.*`. Settings nuevo:
+`App\Http\Controllers\Settings\PaymentPinController` (`GET`/`PUT
+/settings/pin`, nombres `pin.edit`/`pin.update`), sin `RequirePassword` —
+deliberadamente más liviano que cambiar la contraseña.
+
+**Frontend**: nueva página `resources/js/pages/settings/PaymentPin.vue`
+(mismo patrón `<Form>` + wayfinder `.form()` que `settings/Security.vue`),
+nav item nuevo en `resources/js/layouts/settings/Layout.vue` ("PIN de
+cobro", visible para los 3 roles — mismo criterio que Profile/Security/
+Appearance, un PIN configurado por `cocina` simplemente nunca se usa ya que
+el gate real solo corre en rutas ya restringidas a `role:admin,mesero`).
+Componente nuevo `resources/js/components/PaymentPinModal.vue` (`useForm`
+propio, no acoplado a los errores de la petición de pago original) montado
+en `mesas/Cobro.vue`: un watcher sobre `page.props.errors.pin` lo abre; al
+verificar, reintenta automáticamente el envío de pago que quedó pendiente
+(`pendingRetry`, guardado antes de cada `router.post` de `confirmPayment`/
+`confirmPaymentByItems`) sin que el mesero tenga que volver a tocar el
+botón. `errors.pin_not_set` tiene su propio banner con link a
+`/settings/pin`, excluido (junto con `pin`) del banner genérico de errores
+para no duplicar el mensaje.
+
+**Tests nuevos**: `tests/Unit/Actions/Staff/SetPaymentPinActionTest.php`
+(5), `tests/Unit/Actions/Staff/VerifyPaymentPinActionTest.php` (7, incluye
+F-05 con un segundo tenant vía `User::factory()->for($tenantB, 'tenant')`,
+sin necesidad de cambiar `tenancy()->initialize()` porque ambas Actions
+operan directo sobre el `User` que reciben, sin queries propias),
+`tests/Feature/BloqueoTabletPinTest.php` (16, gate en los 3 endpoints,
+umbral de 5 minutos, rate limiting, F-05, Settings). `tests/Feature/CobroTest.php`
+y `tests/Feature/DivisionDeCuentaTest.php` (specs previos, no son sobre el
+PIN) actualizados para simular ya-configurado + ya-verificado en su
+`beforeEach` (`User::factory()->...->withPaymentPin()->create()` + nuevo
+estado de factory, más `$this->withSession(['pin_verified_at' => ...])`) —
+sin esto, los 24 tests de esos dos specs habrían quedado rotos por el gate
+nuevo sin que el spec de ninguno de los dos fuera realmente sobre PIN.
+Suite completa: 278 tests, 274 passed (250+28 nuevos), 4 skipped
+(preexistentes) — mismo baseline que `_ai/CONTEXT.md` más los tests de esta
+feature, cero regresiones.
+
+**Verificado en browser real** (`demo-f07.localhost:8020`, tenant/dominio
+exclusivo a esta sesión): configurar PIN en Settings (toast "PIN
+actualizado.", label cambia a "Nuevo PIN"), intentar cobrar sin PIN
+configurado (banner "Configura tu PIN de cobro en Ajustes antes de cobrar."
+con link, sin modal), configurar el PIN y volver a intentar (modal
+"Verifica tu PIN"), PIN incorrecto (mensaje genérico "PIN incorrecto." sin
+filtrar info, dentro del modal), PIN correcto (modal se cierra, pago se
+reintenta solo, mesa vuelve a `libre`), sesión ya verificada dentro de la
+ventana de 5 minutos (pago pasa directo, sin modal), sesión nueva tras
+logout/login (modal vuelve a aparecer, verificado también en **light
+mode**). Sin errores de consola en ninguna navegación (solo el log
+informativo del browser-logger de Laravel Boost).
+
+Archivos: `_ai/specs/bloqueo-tablet-pin.spec.md` (nuevo),
+`database/migrations/2026_08_26_000000_add_pin_hash_to_users_table.php`
+(nuevo), `app/Models/User.php`, `app/Actions/Staff/SetPaymentPinAction.php`
+(nuevo), `app/Actions/Staff/VerifyPaymentPinAction.php` (nuevo),
+`app/Exceptions/Staff/TooManyPinAttemptsException.php` (nuevo),
+`app/Http/Middleware/EnsurePaymentPinVerified.php` (nuevo), `bootstrap/app.php`,
+`app/Http/Controllers/Settings/PaymentPinController.php` (nuevo),
+`app/Http/Controllers/PaymentController.php`, `routes/settings.php`,
+`routes/tenant.php`, `database/factories/UserFactory.php`,
+`resources/js/pages/settings/PaymentPin.vue` (nuevo),
+`resources/js/layouts/settings/Layout.vue`,
+`resources/js/components/PaymentPinModal.vue` (nuevo),
+`resources/js/pages/mesas/Cobro.vue`, `tests/Unit/Actions/Staff/SetPaymentPinActionTest.php`
+(nuevo), `tests/Unit/Actions/Staff/VerifyPaymentPinActionTest.php` (nuevo),
+`tests/Feature/BloqueoTabletPinTest.php` (nuevo),
+`tests/Feature/CobroTest.php`, `tests/Feature/DivisionDeCuentaTest.php`,
+`_ai/docs/threat-model.md`. Rama `feature/f07-bloqueo-tablet-pin`.

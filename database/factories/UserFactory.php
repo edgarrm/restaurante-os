@@ -98,6 +98,20 @@ class UserFactory extends Factory
     }
 
     /**
+     * Fija un PIN de cobro (F-07, _ai/docs/threat-model.md — ver
+     * _ai/specs/bloqueo-tablet-pin.spec.md). `pin_hash` no es fillable
+     * (F-04), se fuerza tras crear igual que los demás estados de esta
+     * factory (`admin()`/`mesero()`/`cocina()`/`inactive()`).
+     */
+    public function withPaymentPin(string $pin = '1234'): static
+    {
+        return $this->afterCreating(function (User $user) use ($pin) {
+            $user->pin_hash = Hash::make($pin);
+            $user->save();
+        });
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static

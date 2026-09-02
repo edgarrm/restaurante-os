@@ -2,6 +2,7 @@
 import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import PaymentMethodSelector from '@/components/PaymentMethodSelector.vue';
+import PaymentPinModal from '@/components/PaymentPinModal.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { paymentMethodOptions } from '@/lib/paymentMethods';
 import { close as closeRoute, show as cobroShow } from '@/routes/cobro';
 import { porItems as addPaymentByItemsRoute, store as addPaymentRoute } from '@/routes/cobro/pagos';
 import { index as mesasIndex } from '@/routes/mesas';
+import { edit as editPin } from '@/routes/pin';
 import type { Order, OrderStatus, PaymentMethod, Table } from '@/types';
 
 const { table, order } = defineProps<{
@@ -67,12 +69,43 @@ function money(value: number): string {
 // así que llegan aquí como cualquier error de formulario normal de Inertia
 // (ver PaymentController::close y decision-log.md, 2026-08-12).
 const page = usePage();
+const pageErrors = computed(() => page.props.errors as Record<string, string> | undefined);
+
+// F-07 (_ai/docs/threat-model.md — ver
+// _ai/specs/bloqueo-tablet-pin.spec.md): `pin`/`pin_not_set` tienen su
+// propia UI (modal / banner de abajo), así que se excluyen del banner
+// genérico para no duplicar el mensaje.
 const errorMessage = computed(() => {
-    const errors = page.props.errors as Record<string, string> | undefined;
-    const values = Object.values(errors ?? {});
+    const excluded = new Set(['pin', 'pin_not_set']);
+    const values = Object.entries(pageErrors.value ?? {})
+        .filter(([key]) => !excluded.has(key))
+        .map(([, value]) => value);
 
     return values.length > 0 ? values[0] : null;
 });
+
+const pinNotSetMessage = computed(() => pageErrors.value?.pin_not_set ?? null);
+
+// Modal de PIN (F-07): el submit original queda guardado como
+// `pendingRetry` antes de mandarse — si el servidor lo rechaza con `pin`,
+// el watcher de abajo abre el modal; al verificar, se reintenta
+// automáticamente el mismo pago sin que el mesero tenga que volver a
+// tocar "Confirmar pago".
+const pinModalOpen = ref(false);
+const pendingRetry = ref<(() => void) | null>(null);
+
+watch(
+    () => pageErrors.value?.pin,
+    (pinError) => {
+        if (pinError) {
+            pinModalOpen.value = true;
+        }
+    },
+);
+
+function retryPendingPayment() {
+    pendingRetry.value?.();
+}
 
 const methodLabel = Object.fromEntries(paymentMethodOptions.map((option) => [option.value, option.label])) as Record<PaymentMethod, string>;
 
@@ -109,6 +142,11 @@ function confirmPaymentByItems() {
     }
 
     processing.value = true;
+    // F-07: si el servidor gatea este submit (PIN sin verificar), el
+    // watcher de `pageErrors.pin` abre el modal; al verificar, se
+    // reintenta este mismo envío sin que el mesero vuelva a tocar el
+    // botón.
+    pendingRetry.value = confirmPaymentByItems;
 
     router.post(
         addPaymentByItemsRoute.url(table.id),
@@ -116,6 +154,7 @@ function confirmPaymentByItems() {
         {
             preserveScroll: true,
             onSuccess: () => {
+                pendingRetry.value = null;
                 selectedItemIds.value = [];
             },
             onFinish: () => {
@@ -161,6 +200,9 @@ function confirmPayment() {
     }
 
     processing.value = true;
+    // F-07: mismo criterio que confirmPaymentByItems — guarda este envío
+    // como el que se reintenta automáticamente tras verificar el PIN.
+    pendingRetry.value = confirmPayment;
     // Pago que cubre el saldo → mismo endpoint `close` de #7, sin cambios
     // (así el flujo de un solo pago no nota ninguna diferencia). Pago
     // parcial → endpoint nuevo, que no exige cubrir el total.
@@ -171,6 +213,9 @@ function confirmPayment() {
         { amount: amount.value, method: method.value },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                pendingRetry.value = null;
+            },
             onFinish: () => {
                 processing.value = false;
             },
@@ -199,6 +244,16 @@ function confirmPayment() {
 
         <Alert v-if="errorMessage" variant="destructive">
             <AlertDescription>{{ errorMessage }}</AlertDescription>
+        </Alert>
+
+        <!-- F-07 (_ai/specs/bloqueo-tablet-pin.spec.md): sin PIN
+             configurado no hay nada que verificar en un modal — se dirige
+             a Settings en vez de abrirlo. -->
+        <Alert v-if="pinNotSetMessage" variant="destructive">
+            <AlertDescription class="flex flex-wrap items-center gap-2">
+                <span>{{ pinNotSetMessage }}</span>
+                <Link :href="editPin()" class="font-medium underline underline-offset-4">Ir a Ajustes</Link>
+            </AlertDescription>
         </Alert>
 
         <div class="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
@@ -379,5 +434,7 @@ function confirmPayment() {
                 </CardContent>
             </Card>
         </div>
+
+        <PaymentPinModal v-model:open="pinModalOpen" @verified="retryPendingPayment" />
     </div>
 </template>

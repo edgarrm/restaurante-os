@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePaymentPinVerified;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,8 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // F-06 (_ai/docs/threat-model.md): restricción de rutas por role.
+        // F-07: gate de PIN de re-autenticación en los endpoints de cobro
+        // (_ai/specs/bloqueo-tablet-pin.spec.md).
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
+            'payment-pin' => EnsurePaymentPinVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
